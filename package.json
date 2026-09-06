@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "AZ Fashion Full-Stack App",
   "scripts": {
-    "install-all": "cd backend && npm install && npm rebuild sqlite3 --build-from-source && cd ../frontend && npm install",
-    "build": "cd backend && npm install && npm rebuild sqlite3 --build-from-source && cd ../frontend && npm install && npm run build",
+    "install-all": "cd backend && npm install && cd ../frontend && npm install",
+    "build": "cd backend && npm install && cd ../frontend && npm install && npm run build",
     "start": "cd backend && node server.js"
   },
   "engines": {

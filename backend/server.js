@@ -3,13 +3,13 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const db = require('./db');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Razorpay = require('razorpay');
 const multer = require('multer');
 const path = require('path');
+const supabase = require('./supabase');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -24,7 +24,7 @@ app.use(helmet({
 
 // 2. CORS and Body Parsing
 app.use(cors());
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '5mb' }));
 
 // 3. Brute Force & Rate Limiting Protection
 const authLimiter = rateLimit({
@@ -53,31 +53,45 @@ app.use('/api/', (req, res, next) => {
   next();
 });
 
-// 4. Secure File Upload with Multer (Type and Size Validation)
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, path.join(__dirname, '../frontend/public/images/'))
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, 'prod_' + uniqueSuffix + ext);
-  }
-});
-const fileFilter = (req, file, cb) => {
-  const allowedExts = ['.jpg', '.jpeg', '.png', '.webp'];
-  const ext = path.extname(file.originalname).toLowerCase();
-  const allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
-  if (allowedExts.includes(ext) && allowedMimes.includes(file.mimetype)) {
-    return cb(null, true);
-  }
-  cb(new Error('Security Error: Only image files (.jpg, .jpeg, .png, .webp) are allowed.'));
-};
+// 4. Secure File Upload with Multer in Memory for Cloud Storage
 const upload = multer({
-  storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB max file size
-  fileFilter: fileFilter
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB max file size
+  fileFilter: (req, file, cb) => {
+    const allowedExts = ['.jpg', '.jpeg', '.png', '.webp'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    const allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (allowedExts.includes(ext) && allowedMimes.includes(file.mimetype)) {
+      return cb(null, true);
+    }
+    cb(new Error('Security Error: Only image files (.jpg, .jpeg, .png, .webp) are allowed.'));
+  }
 });
+
+// Helper: Upload file buffer directly to Supabase Storage bucket 'product-images'
+async function uploadToSupabaseStorage(file) {
+  const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
+  const cleanBase = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
+  const filename = `prod_${Date.now()}_${Math.round(Math.random() * 1e6)}_${cleanBase}${ext}`;
+  
+  const { data, error } = await supabase.storage
+    .from('product-images')
+    .upload(filename, file.buffer, {
+      contentType: file.mimetype,
+      upsert: false
+    });
+
+  if (error) {
+    console.error('Supabase Storage Upload Error:', error);
+    throw new Error('Image upload failed: ' + error.message);
+  }
+
+  const { data: publicData } = supabase.storage
+    .from('product-images')
+    .getPublicUrl(filename);
+
+  return publicData.publicUrl;
+}
 
 // 5. Admin Authentication Middleware
 const authenticateAdmin = (req, res, next) => {
@@ -109,42 +123,49 @@ app.post('/api/admin/login', (req, res) => {
   res.json({ message: 'Authentication successful', token: adminToken });
 });
 
-// --- Setup Razorpay ---
+// Setup Razorpay
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_mock',
   key_secret: process.env.RAZORPAY_KEY_SECRET || 'mock_secret'
 });
 
-// Get all collections
-app.get('/api/collections', (req, res) => {
-  db.all('SELECT * FROM collections', [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
-  });
+// 1. Get all collections
+app.get('/api/collections', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('collections')
+      .select('*')
+      .order('id', { ascending: true });
+
+    if (error) throw error;
+    res.json(data || []);
+  } catch (err) {
+    console.error('Error fetching collections:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// Get products (optionally filtered by collection_id)
-app.get('/api/products', (req, res) => {
-  const collectionId = req.query.collection_id;
-  let query = 'SELECT * FROM products';
-  let params = [];
+// 2. Get products (optionally filtered by collection_id)
+app.get('/api/products', async (req, res) => {
+  try {
+    const collectionId = req.query.collection_id;
+    let query = supabase.from('products').select('*');
 
-  if (collectionId) {
-    query += ' WHERE collection_id = ?';
-    params.push(collectionId);
-  }
+    if (collectionId) {
+      query = query.eq('collection_id', parseInt(collectionId, 10));
+    }
 
-  db.all(query, params, (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    // Parse JSON fields
-    const parsedRows = rows.map(r => {
+    const { data, error } = await query.order('id', { ascending: true });
+    if (error) throw error;
+
+    const parsedRows = (data || []).map(r => {
       let images = [];
       if (r.image_url) {
         try {
           const parsed = JSON.parse(r.image_url);
           if (Array.isArray(parsed)) images = parsed;
           else images = [r.image_url];
-        } catch(e) {
+        } catch (e) {
           images = [r.image_url];
         }
       }
@@ -152,96 +173,126 @@ app.get('/api/products', (req, res) => {
         ...r,
         image_url: images[0] || r.image_url || '/images/col_daily.png',
         images: images.length > 0 ? images : [r.image_url || '/images/col_daily.png'],
-        sizes: r.sizes ? JSON.parse(r.sizes) : [],
-        colors: r.colors ? JSON.parse(r.colors) : [],
-        reviews: r.reviews ? JSON.parse(r.reviews) : []
+        sizes: typeof r.sizes === 'string' ? JSON.parse(r.sizes || '[]') : (r.sizes || []),
+        colors: typeof r.colors === 'string' ? JSON.parse(r.colors || '[]') : (r.colors || []),
+        reviews: typeof r.reviews === 'string' ? JSON.parse(r.reviews || '[]') : (r.reviews || [])
       };
     });
+
     res.json(parsedRows);
-  });
+  } catch (err) {
+    console.error('Error fetching products:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
-  // Admin: Add Product (Multiple images support)
-  app.post('/api/admin/products', authenticateAdmin, upload.array('images', 10), (req, res) => {
+// 3. Admin: Add Product (Multiple images uploaded directly to Supabase Storage)
+app.post('/api/admin/products', authenticateAdmin, upload.array('images', 10), async (req, res) => {
+  try {
     const { name, description, price, collection_id, sizes, category } = req.body;
     let imageUrls = [];
-    if (req.files && req.files.length > 0) {
-      imageUrls = req.files.map(f => '/images/' + f.filename);
-    } else if (req.file) {
-      imageUrls = ['/images/' + req.file.filename];
+
+    const files = req.files || (req.file ? [req.file] : []);
+    for (const file of files) {
+      const publicUrl = await uploadToSupabaseStorage(file);
+      imageUrls.push(publicUrl);
     }
+
     const image_url = imageUrls.length > 0 ? JSON.stringify(imageUrls) : '';
     
-    // Parse sizes (expected comma separated)
     let sizesArr = [];
     if (sizes) {
-      sizesArr = sizes.split(',').map(s => s.trim());
+      sizesArr = sizes.split(',').map(s => s.trim()).filter(Boolean);
     }
 
-    db.run(
-      'INSERT INTO products (name, description, price, image_url, collection_id, sizes, category) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [name, description, parseFloat(price), image_url, collection_id || null, JSON.stringify(sizesArr), category || ''],
-      function(err) {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ id: this.lastID, message: "Product added successfully" });
-      }
-    );
-  });
+    const insertData = {
+      name,
+      description: description || '',
+      price: parseFloat(price) || 0,
+      image_url,
+      collection_id: collection_id ? parseInt(collection_id, 10) : null,
+      sizes: JSON.stringify(sizesArr),
+      colors: JSON.stringify(['Default']),
+      reviews: JSON.stringify([])
+    };
 
-  // Admin: Delete Product
-  app.delete('/api/admin/products/:id', authenticateAdmin, (req, res) => {
-    db.run('DELETE FROM products WHERE id = ?', [req.params.id], function(err) {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ message: "Product deleted successfully" });
-    });
-  });
+    const { data, error } = await supabase.from('products').insert(insertData).select().single();
+    if (error) throw error;
 
-  // Admin: Update Product (Multiple images support)
-  app.put('/api/admin/products/:id', authenticateAdmin, upload.array('images', 10), (req, res) => {
+    res.json({ id: data.id, message: "Product added successfully" });
+  } catch (err) {
+    console.error('Error adding product:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 4. Admin: Delete Product
+app.delete('/api/admin/products/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { error } = await supabase.from('products').delete().eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ message: "Product deleted successfully" });
+  } catch (err) {
+    console.error('Error deleting product:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 5. Admin: Update Product (Multiple images support with Supabase Storage)
+app.put('/api/admin/products/:id', authenticateAdmin, upload.array('images', 10), async (req, res) => {
+  try {
     const { name, description, price, collection_id, sizes } = req.body;
     let sizesArr = [];
     if (sizes) {
-      sizesArr = sizes.split(',').map(s => s.trim());
+      sizesArr = sizes.split(',').map(s => s.trim()).filter(Boolean);
     }
 
-    let imageUrls = [];
-    if (req.files && req.files.length > 0) {
-      imageUrls = req.files.map(f => '/images/' + f.filename);
-    } else if (req.file) {
-      imageUrls = ['/images/' + req.file.filename];
+    let updateData = {
+      name,
+      description: description || '',
+      price: parseFloat(price) || 0,
+      collection_id: collection_id ? parseInt(collection_id, 10) : null,
+      sizes: JSON.stringify(sizesArr)
+    };
+
+    const files = req.files || (req.file ? [req.file] : []);
+    if (files.length > 0) {
+      let imageUrls = [];
+      for (const file of files) {
+        const publicUrl = await uploadToSupabaseStorage(file);
+        imageUrls.push(publicUrl);
+      }
+      updateData.image_url = JSON.stringify(imageUrls);
     }
 
-    if (imageUrls.length > 0) {
-      const image_url = JSON.stringify(imageUrls);
-      db.run(
-        'UPDATE products SET name = ?, description = ?, price = ?, image_url = ?, collection_id = ?, sizes = ? WHERE id = ?',
-        [name, description, parseFloat(price), image_url, collection_id || null, JSON.stringify(sizesArr), req.params.id],
-        function(err) {
-          if (err) return res.status(500).json({ error: err.message });
-          res.json({ message: "Product updated successfully" });
-        }
-      );
-    } else {
-      db.run(
-        'UPDATE products SET name = ?, description = ?, price = ?, collection_id = ?, sizes = ? WHERE id = ?',
-        [name, description, parseFloat(price), collection_id || null, JSON.stringify(sizesArr), req.params.id],
-        function(err) {
-          if (err) return res.status(500).json({ error: err.message });
-          res.json({ message: "Product updated successfully" });
-        }
-      );
-    }
-  });
+    const { error } = await supabase.from('products').update(updateData).eq('id', req.params.id);
+    if (error) throw error;
 
-// Submit an inquiry
-app.post('/api/inquiries', (req, res) => {
-  const { name, email, phone, message } = req.body;
-  if (!name || !email) return res.status(400).json({ error: 'Name and email are required' });
+    res.json({ message: "Product updated successfully" });
+  } catch (err) {
+    console.error('Error updating product:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
-  db.run('INSERT INTO inquiries (name, email, phone, message) VALUES (?, ?, ?, ?)', [name, email, phone, message], function (err) {
-    if (err) return res.status(500).json({ error: err.message });
-    res.status(201).json({ id: this.lastID, message: 'Inquiry submitted successfully' });
-  });
+// 6. Submit an inquiry
+app.post('/api/inquiries', async (req, res) => {
+  try {
+    const { name, email, phone, message } = req.body;
+    if (!name || !email) return res.status(400).json({ error: 'Name and email are required' });
+
+    const { data, error } = await supabase
+      .from('inquiries')
+      .insert({ name, email, phone: phone || '', message: message || '' })
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.status(201).json({ id: data.id, message: 'Inquiry submitted successfully' });
+  } catch (err) {
+    console.error('Error submitting inquiry:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Helper middleware for Single-Device Restriction (Scenario B)
@@ -250,12 +301,18 @@ function authenticateUser(req, res, next) {
   const token = authHeader && authHeader.split(' ')[1];
   if (!token) return next();
 
-  jwt.verify(token, JWT_SECRET, (err, decoded) => {
+  jwt.verify(token, JWT_SECRET, async (err, decoded) => {
     if (err) {
       return res.status(401).json({ error: 'SESSION_TERMINATED', message: 'Session expired. Please log in again.' });
     }
 
-    db.get('SELECT session_token FROM users WHERE id = ?', [decoded.id], (dbErr, user) => {
+    try {
+      const { data: user, error: dbErr } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', decoded.id)
+        .single();
+
       if (dbErr || !user) {
         return res.status(401).json({ error: 'SESSION_TERMINATED', message: 'User account not found.' });
       }
@@ -270,11 +327,14 @@ function authenticateUser(req, res, next) {
 
       req.user = decoded;
       next();
-    });
+    } catch (e) {
+      req.user = decoded;
+      next();
+    }
   });
 }
 
-// 1. Register Account (Single-Device Token generated)
+// 7. Register Account (Single-Device Token generated)
 app.post('/api/auth/register', async (req, res) => {
   const { name, email, phone, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
@@ -284,67 +344,103 @@ app.post('/api/auth/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt);
     const session_token = crypto.randomBytes(24).toString('hex');
 
-    db.run('INSERT INTO users (email, password_hash, name, phone, session_token) VALUES (?, ?, ?, ?, ?)', [email, hashedPassword, name || null, phone || null, session_token], function (err) {
-      if (err) {
-        if (err.message.includes('UNIQUE constraint failed')) {
-          return res.status(400).json({ error: 'An account with this email already exists. Please login.' });
-        }
-        return res.status(500).json({ error: err.message });
+    // Attempt insert with session_token
+    let insertObj = {
+      email: email.trim().toLowerCase(),
+      password_hash: hashedPassword,
+      name: name || null,
+      phone: phone || null,
+      session_token
+    };
+
+    let { data, error } = await supabase.from('users').insert(insertObj).select().single();
+
+    // Fallback if session_token column not yet added in Supabase schema
+    if (error && error.message && error.message.includes('session_token')) {
+      delete insertObj.session_token;
+      const retry = await supabase.from('users').insert(insertObj).select().single();
+      data = retry.data;
+      error = retry.error;
+    }
+
+    if (error) {
+      if (error.code === '23505' || error.message.includes('duplicate key') || error.message.includes('unique')) {
+        return res.status(400).json({ error: 'An account with this email already exists. Please login.' });
       }
-      
-      const token = jwt.sign({ id: this.lastID, email, session_token }, JWT_SECRET, { expiresIn: '7d' });
-      res.status(201).json({ 
-        message: 'Account created successfully', 
-        user: { id: this.lastID, email, name: name || 'Valued Client', phone: phone || '' }, 
-        token 
-      });
+      return res.status(500).json({ error: error.message });
+    }
+
+    const token = jwt.sign({ id: data.id, email: data.email, session_token }, JWT_SECRET, { expiresIn: '7d' });
+    res.status(201).json({
+      message: 'Account created successfully',
+      user: { id: data.id, email: data.email, name: data.name || 'Valued Client', phone: data.phone || '' },
+      token
     });
   } catch (err) {
-    res.status(500).json({ error: 'Server error' });
+    console.error('Error during register:', err);
+    res.status(500).json({ error: 'Server error: ' + err.message });
   }
 });
 
-// 2. Login (Support Email OR Phone Number + Single-Device Invalidation)
-app.post('/api/auth/login', (req, res) => {
+// 8. Login (Support Email OR Phone Number + Single-Device Invalidation)
+app.post('/api/auth/login', async (req, res) => {
   const { email, identifier, password } = req.body;
-  const loginKey = (identifier || email || '').trim();
-  
+  const loginKey = (identifier || email || '').trim().toLowerCase();
+
   if (!loginKey || !password) {
     return res.status(400).json({ error: 'Email or phone number and password are required' });
   }
-  
-  db.get('SELECT * FROM users WHERE email = ? OR phone = ?', [loginKey, loginKey], async (err, user) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (!user) return res.status(401).json({ error: "Account doesn't exist. Please sign up." });
-    
+
+  try {
+    const { data: users, error: findErr } = await supabase
+      .from('users')
+      .select('*')
+      .or(`email.ilike.${loginKey},phone.eq.${loginKey}`);
+
+    if (findErr || !users || users.length === 0) {
+      return res.status(401).json({ error: "Account doesn't exist. Please sign up." });
+    }
+
+    const user = users[0];
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) return res.status(401).json({ error: 'Incorrect password' });
-    
+
     // Invalidate all previous device sessions by generating a new session_token
     const session_token = crypto.randomBytes(24).toString('hex');
-    db.run('UPDATE users SET session_token = ? WHERE id = ?', [session_token, user.id], (updErr) => {
-      if (updErr) return res.status(500).json({ error: updErr.message });
-      
-      const token = jwt.sign({ id: user.id, email: user.email, session_token }, JWT_SECRET, { expiresIn: '7d' });
-      res.json({ 
-        message: 'Login successful', 
-        user: { id: user.id, email: user.email, name: user.name, phone: user.phone, address: user.address }, 
-        token 
-      });
+    try {
+      await supabase.from('users').update({ session_token }).eq('id', user.id);
+    } catch (e) {
+      // Gracefully continue if column not yet added
+    }
+
+    const token = jwt.sign({ id: user.id, email: user.email, session_token }, JWT_SECRET, { expiresIn: '7d' });
+    res.json({
+      message: 'Login successful',
+      user: { id: user.id, email: user.email, name: user.name, phone: user.phone, address: user.address },
+      token
     });
-  });
+  } catch (err) {
+    console.error('Error during login:', err);
+    res.status(500).json({ error: 'Server error: ' + err.message });
+  }
 });
 
-// 2.1 Verify Active Session (Used for live single-device kickout)
+// 9. Verify Active Session (Used for live single-device kickout)
 app.get('/api/auth/verify-session', (req, res) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'NO_TOKEN' });
 
-  jwt.verify(token, JWT_SECRET, (err, decoded) => {
+  jwt.verify(token, JWT_SECRET, async (err, decoded) => {
     if (err) return res.status(401).json({ error: 'SESSION_TERMINATED', message: 'Session expired.' });
 
-    db.get('SELECT session_token FROM users WHERE id = ?', [decoded.id], (dbErr, user) => {
+    try {
+      const { data: user, error: dbErr } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', decoded.id)
+        .single();
+
       if (dbErr || !user) return res.status(401).json({ error: 'SESSION_TERMINATED', message: 'User not found.' });
 
       if (user.session_token && decoded.session_token && user.session_token !== decoded.session_token) {
@@ -355,11 +451,13 @@ app.get('/api/auth/verify-session', (req, res) => {
       }
 
       res.json({ valid: true, user_id: decoded.id });
-    });
+    } catch (e) {
+      res.json({ valid: true, user_id: decoded.id });
+    }
   });
 });
 
-// 2.5 Reset Password
+// 10. Reset Password
 app.post('/api/auth/reset-password', async (req, res) => {
   const { email, newPassword } = req.body;
   if (!email || !newPassword) return res.status(400).json({ error: 'Email and new password required' });
@@ -368,138 +466,221 @@ app.post('/api/auth/reset-password', async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
 
-    db.run('UPDATE users SET password_hash = ? WHERE email = ?', [hashedPassword, email], function(err) {
-      if (err) return res.status(500).json({ error: err.message });
-      if (this.changes === 0) return res.status(404).json({ error: 'Email not found' });
-      res.json({ message: 'Password reset successfully' });
-    });
+    const { data, error } = await supabase
+      .from('users')
+      .update({ password_hash: hashedPassword })
+      .ilike('email', email.trim())
+      .select();
+
+    if (error) throw error;
+    if (!data || data.length === 0) return res.status(404).json({ error: 'Email not found' });
+    res.json({ message: 'Password reset successfully' });
   } catch (err) {
-    res.status(500).json({ error: 'Server error' });
+    console.error('Error resetting password:', err);
+    res.status(500).json({ error: 'Server error: ' + err.message });
   }
 });
 
-// 3. Update User Address
-app.post('/api/user/address', authenticateUser, (req, res) => {
-  const { user_id, name, address } = req.body;
-  db.run('UPDATE users SET name = ?, address = ? WHERE id = ?', [name, address, user_id], function(err) {
-    if (err) return res.status(500).json({ error: err.message });
+// 11. Update User Address
+app.post('/api/user/address', authenticateUser, async (req, res) => {
+  try {
+    const { user_id, name, address } = req.body;
+    const { error } = await supabase
+      .from('users')
+      .update({ name, address })
+      .eq('id', user_id);
+
+    if (error) throw error;
     res.json({ message: 'Address updated' });
-  });
+  } catch (err) {
+    console.error('Error updating address:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// 3.5 Delete User Account
-app.delete('/api/user/:id', authenticateUser, (req, res) => {
-  const { id } = req.params;
-  db.run('DELETE FROM users WHERE id = ?', [id], function(err) {
-    if (err) return res.status(500).json({ error: err.message });
-    db.run('DELETE FROM requests WHERE user_id = ?', [id]); // cleanup requests
+// 12. Delete User Account
+app.delete('/api/user/:id', authenticateUser, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await supabase.from('requests').delete().eq('user_id', id);
+    const { error } = await supabase.from('users').delete().eq('id', id);
+    if (error) throw error;
     res.json({ message: 'Account deleted' });
-  });
+  } catch (err) {
+    console.error('Error deleting user:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// 4. Submit Request
-app.post('/api/requests', authenticateUser, (req, res) => {
-  const { user_id, product_id, size, color } = req.body;
-  if (!user_id || !product_id) return res.status(400).json({ error: 'Missing data' });
+// 13. Submit Request
+app.post('/api/requests', authenticateUser, async (req, res) => {
+  try {
+    const { user_id, product_id, size, color } = req.body;
+    if (!user_id || !product_id) return res.status(400).json({ error: 'Missing data' });
 
-  db.run('INSERT INTO requests (user_id, product_id, size, color) VALUES (?, ?, ?, ?)', [user_id, product_id, size, color], function (err) {
-    if (err) return res.status(500).json({ error: err.message });
-    res.status(201).json({ id: this.lastID, message: 'Request submitted successfully' });
-  });
+    const { data, error } = await supabase
+      .from('requests')
+      .insert({ user_id, product_id, size, color, status: 'pending' })
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.status(201).json({ id: data.id, message: 'Request submitted successfully' });
+  } catch (err) {
+    console.error('Error creating request:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// 4.5 Delete Request
-app.delete('/api/requests/:id', authenticateUser, (req, res) => {
-  const { id } = req.params;
-  db.run('DELETE FROM requests WHERE id = ?', [id], function(err) {
-    if (err) return res.status(500).json({ error: err.message });
+// 14. Delete Request
+app.delete('/api/requests/:id', authenticateUser, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { error } = await supabase.from('requests').delete().eq('id', id);
+    if (error) throw error;
     res.json({ message: 'Request deleted' });
-  });
+  } catch (err) {
+    console.error('Error deleting request:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// 5. Get User Requests
-app.get('/api/requests', authenticateUser, (req, res) => {
-  const { user_id } = req.query;
-  const query = `
-    SELECT r.*, p.name as product_name, p.price, p.image_url 
-    FROM requests r 
-    JOIN products p ON r.product_id = p.id 
-    WHERE r.user_id = ? 
-    ORDER BY r.created_at DESC
-  `;
-  db.all(query, [user_id], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    const parsedRows = rows.map(r => {
-      let primaryImage = r.image_url;
+// 15. Get User Requests
+app.get('/api/requests', authenticateUser, async (req, res) => {
+  try {
+    const { user_id } = req.query;
+    const { data: requests, error } = await supabase
+      .from('requests')
+      .select('*')
+      .eq('user_id', user_id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    // Fetch product details for these requests
+    const productIds = [...new Set((requests || []).map(r => r.product_id).filter(Boolean))];
+    let productsMap = {};
+    if (productIds.length > 0) {
+      const { data: prods } = await supabase
+        .from('products')
+        .select('id, name, price, image_url')
+        .in('id', productIds);
+      if (prods) {
+        prods.forEach(p => { productsMap[p.id] = p; });
+      }
+    }
+
+    const parsedRows = (requests || []).map(r => {
+      const p = productsMap[r.product_id] || {};
+      let primaryImage = p.image_url;
       try {
         if (primaryImage && primaryImage.startsWith('[')) {
           const arr = JSON.parse(primaryImage);
           if (Array.isArray(arr) && arr.length > 0) primaryImage = arr[0];
         }
-      } catch(e) {}
+      } catch (e) {}
       return {
         ...r,
+        product_name: p.name || 'Product',
+        price: p.price || 0,
         image_url: primaryImage || '/images/col_daily.png'
       };
     });
+
     res.json(parsedRows);
-  });
+  } catch (err) {
+    console.error('Error fetching user requests:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
-  // 6. Admin: Get All Requests
-  app.get('/api/admin/requests', authenticateAdmin, (req, res) => {
-    const query = `
-      SELECT r.*, p.name as product_name, p.price, p.image_url, u.name as user_name, u.email as user_email, u.phone as user_phone
-      FROM requests r 
-      JOIN products p ON r.product_id = p.id 
-      JOIN users u ON r.user_id = u.id
-      ORDER BY r.created_at DESC
-    `;
-    db.all(query, [], (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
-      const parsedRows = rows.map(r => {
-        let primaryImage = r.image_url;
-        try {
-          if (primaryImage && primaryImage.startsWith('[')) {
-            const arr = JSON.parse(primaryImage);
-            if (Array.isArray(arr) && arr.length > 0) primaryImage = arr[0];
-          }
-        } catch(e) {}
-        return {
-          ...r,
-          image_url: primaryImage || '/images/col_daily.png'
-        };
-      });
-      res.json(parsedRows);
-    });
-  });
+// 16. Admin: Get All Requests
+app.get('/api/admin/requests', authenticateAdmin, async (req, res) => {
+  try {
+    const { data: requests, error } = await supabase
+      .from('requests')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-  // 6.1 Admin: Approve Request
-  app.post('/api/requests/:id/approve', authenticateAdmin, (req, res) => {
-    const requestId = req.params.id;
-    db.run('UPDATE requests SET status = ? WHERE id = ?', ['available', requestId], function (err) {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ message: 'Request approved and is now available for payment' });
-    });
-  });
-  
-  // 6.2 Admin: Decline Request
-  app.post('/api/requests/:id/decline', authenticateAdmin, (req, res) => {
-    const requestId = req.params.id;
-    db.run('UPDATE requests SET status = ? WHERE id = ?', ['declined', requestId], function (err) {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ message: 'Request declined' });
-    });
-  });
+    if (error) throw error;
 
-// 7. Real Razorpay Create Order
+    const productIds = [...new Set((requests || []).map(r => r.product_id).filter(Boolean))];
+    const userIds = [...new Set((requests || []).map(r => r.user_id).filter(Boolean))];
+
+    let productsMap = {};
+    let usersMap = {};
+
+    if (productIds.length > 0) {
+      const { data: prods } = await supabase.from('products').select('id, name, price, image_url').in('id', productIds);
+      if (prods) prods.forEach(p => { productsMap[p.id] = p; });
+    }
+    if (userIds.length > 0) {
+      const { data: us } = await supabase.from('users').select('id, name, email, phone').in('id', userIds);
+      if (us) us.forEach(u => { usersMap[u.id] = u; });
+    }
+
+    const parsedRows = (requests || []).map(r => {
+      const p = productsMap[r.product_id] || {};
+      const u = usersMap[r.user_id] || {};
+      let primaryImage = p.image_url;
+      try {
+        if (primaryImage && primaryImage.startsWith('[')) {
+          const arr = JSON.parse(primaryImage);
+          if (Array.isArray(arr) && arr.length > 0) primaryImage = arr[0];
+        }
+      } catch (e) {}
+      return {
+        ...r,
+        product_name: p.name || 'Product',
+        price: p.price || 0,
+        image_url: primaryImage || '/images/col_daily.png',
+        user_name: u.name || 'Client',
+        user_email: u.email || '',
+        user_phone: u.phone || ''
+      };
+    });
+
+    res.json(parsedRows);
+  } catch (err) {
+    console.error('Error fetching admin requests:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 17. Admin: Approve Request
+app.post('/api/requests/:id/approve', authenticateAdmin, async (req, res) => {
+  try {
+    const requestId = req.params.id;
+    const { error } = await supabase.from('requests').update({ status: 'available' }).eq('id', requestId);
+    if (error) throw error;
+    res.json({ message: 'Request approved and is now available for payment' });
+  } catch (err) {
+    console.error('Error approving request:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 18. Admin: Decline Request
+app.post('/api/requests/:id/decline', authenticateAdmin, async (req, res) => {
+  try {
+    const requestId = req.params.id;
+    const { error } = await supabase.from('requests').update({ status: 'declined' }).eq('id', requestId);
+    if (error) throw error;
+    res.json({ message: 'Request declined' });
+  } catch (err) {
+    console.error('Error declining request:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 19. Real Razorpay Create Order
 app.post('/api/razorpay/create-order', async (req, res) => {
-  const { amount } = req.body; // amount in INR
+  const { amount } = req.body;
   if (!amount) return res.status(400).json({ error: 'Amount required' });
   
   try {
     const options = {
-      amount: amount * 100, // amount in smallest currency unit (paise)
+      amount: Math.round(parseFloat(amount) * 100),
       currency: "INR",
       receipt: "receipt_" + crypto.randomBytes(4).toString('hex')
     };
@@ -510,63 +691,77 @@ app.post('/api/razorpay/create-order', async (req, res) => {
   }
 });
 
-// 8. Razorpay Verify Payment
-app.post('/api/razorpay/verify', (req, res) => {
-  const { test_mode, req_ids, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+// 20. Razorpay Verify Payment
+app.post('/api/razorpay/verify', async (req, res) => {
+  try {
+    const { test_mode, req_ids, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
-  if (test_mode) {
-    if (req_ids) {
-      const ids = req_ids.split(',').map(id => parseInt(id, 10));
-      ids.forEach(id => {
-        db.run('UPDATE requests SET status = ? WHERE id = ?', ['paid', id]);
-      });
+    if (test_mode) {
+      if (req_ids) {
+        const ids = req_ids.split(',').map(id => parseInt(id, 10)).filter(Boolean);
+        if (ids.length > 0) {
+          await supabase.from('requests').update({ status: 'paid' }).in('id', ids);
+        }
+      }
+      return res.json({ message: "Test Payment verified successfully" });
     }
-    return res.json({ message: "Test Payment verified successfully" });
-  }
 
-  const sign = razorpay_order_id + "|" + razorpay_payment_id;
-  const expectedSign = crypto
-    .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || 'mock_secret')
-    .update(sign.toString())
-    .digest("hex");
+    const sign = razorpay_order_id + "|" + razorpay_payment_id;
+    const expectedSign = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || 'mock_secret')
+      .update(sign.toString())
+      .digest("hex");
 
-  if (razorpay_signature === expectedSign) {
-    res.json({ message: "Payment verified successfully" });
-  } else {
-    res.status(400).json({ error: "Invalid signature" });
+    if (razorpay_signature === expectedSign) {
+      if (req_ids) {
+        const ids = req_ids.split(',').map(id => parseInt(id, 10)).filter(Boolean);
+        if (ids.length > 0) {
+          await supabase.from('requests').update({ status: 'paid' }).in('id', ids);
+        }
+      }
+      res.json({ message: "Payment verified successfully" });
+    } else {
+      res.status(400).json({ error: "Invalid signature" });
+    }
+  } catch (err) {
+    console.error('Error verifying payment:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
-// 9. Add Review
-app.post('/api/products/:id/reviews', (req, res) => {
-  const { id } = req.params;
-  const { user, rating, comment } = req.body;
-  
-  if (!user || !rating || !comment) {
-    return res.status(400).json({ error: "All fields are required" });
-  }
+// 21. Add Review
+app.post('/api/products/:id/reviews', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { user, rating, comment } = req.body;
+    
+    if (!user || !rating || !comment) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
 
-  db.get('SELECT reviews FROM products WHERE id = ?', [id], (err, row) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (!row) return res.status(404).json({ error: "Product not found" });
+    const { data: prod, error } = await supabase.from('products').select('reviews').eq('id', id).single();
+    if (error || !prod) return res.status(404).json({ error: "Product not found" });
 
     let reviews = [];
-    try { reviews = JSON.parse(row.reviews); } catch(e){}
-    
-    reviews.unshift({ user, rating: parseInt(rating), comment });
+    try {
+      reviews = typeof prod.reviews === 'string' ? JSON.parse(prod.reviews) : (prod.reviews || []);
+    } catch (e) {}
 
-    db.run('UPDATE products SET reviews = ? WHERE id = ?', [JSON.stringify(reviews), id], (err) => {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ message: "Review added successfully", reviews });
-    });
-  });
+    reviews.unshift({ user, rating: parseInt(rating, 10), comment });
+
+    await supabase.from('products').update({ reviews: JSON.stringify(reviews) }).eq('id', id);
+    res.json({ message: "Review added successfully", reviews });
+  } catch (err) {
+    console.error('Error adding review:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// Centralized error handling (Multer file limits, MIME types, and server errors)
+// Centralized error handling
 app.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ error: 'File too large. Maximum allowed size is 5MB.' });
+      return res.status(400).json({ error: 'File too large. Maximum allowed size is 10MB.' });
     }
     return res.status(400).json({ error: `File upload error: ${err.message}` });
   } else if (err) {
