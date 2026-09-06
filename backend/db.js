@@ -40,11 +40,17 @@ const db = new sqlite3.Database(dbPath, (err) => {
         name TEXT,
         phone TEXT,
         address TEXT,
+        session_token TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`);
 
       // Migration: Add phone column to users table if it doesn't exist
       db.run(`ALTER TABLE users ADD COLUMN phone TEXT`, (err) => {
+        // Silently ignore if column already exists
+      });
+
+      // Migration: Add session_token column to users table for single-device restriction
+      db.run(`ALTER TABLE users ADD COLUMN session_token TEXT`, (err) => {
         // Silently ignore if column already exists
       });
 

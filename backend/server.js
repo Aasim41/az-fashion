@@ -244,9 +244,37 @@ app.post('/api/inquiries', (req, res) => {
   });
 });
 
-// --- NEW E-COMMERCE APIS ---
+// Helper middleware for Single-Device Restriction (Scenario B)
+function authenticateUser(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) return next();
 
-// 1. Register Account
+  jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(401).json({ error: 'SESSION_TERMINATED', message: 'Session expired. Please log in again.' });
+    }
+
+    db.get('SELECT session_token FROM users WHERE id = ?', [decoded.id], (dbErr, user) => {
+      if (dbErr || !user) {
+        return res.status(401).json({ error: 'SESSION_TERMINATED', message: 'User account not found.' });
+      }
+
+      // Single-Device Enforcement: Compare token's session with current active DB session
+      if (user.session_token && decoded.session_token && user.session_token !== decoded.session_token) {
+        return res.status(401).json({
+          error: 'SESSION_TERMINATED',
+          message: 'Your account was logged into from another device. You have been logged out on this device.'
+        });
+      }
+
+      req.user = decoded;
+      next();
+    });
+  });
+}
+
+// 1. Register Account (Single-Device Token generated)
 app.post('/api/auth/register', async (req, res) => {
   const { name, email, phone, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
@@ -254,8 +282,9 @@ app.post('/api/auth/register', async (req, res) => {
   try {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
+    const session_token = crypto.randomBytes(24).toString('hex');
 
-    db.run('INSERT INTO users (email, password_hash, name, phone) VALUES (?, ?, ?, ?)', [email, hashedPassword, name || null, phone || null], function (err) {
+    db.run('INSERT INTO users (email, password_hash, name, phone, session_token) VALUES (?, ?, ?, ?, ?)', [email, hashedPassword, name || null, phone || null, session_token], function (err) {
       if (err) {
         if (err.message.includes('UNIQUE constraint failed')) {
           return res.status(400).json({ error: 'An account with this email already exists. Please login.' });
@@ -263,7 +292,7 @@ app.post('/api/auth/register', async (req, res) => {
         return res.status(500).json({ error: err.message });
       }
       
-      const token = jwt.sign({ id: this.lastID, email }, JWT_SECRET, { expiresIn: '7d' });
+      const token = jwt.sign({ id: this.lastID, email, session_token }, JWT_SECRET, { expiresIn: '7d' });
       res.status(201).json({ 
         message: 'Account created successfully', 
         user: { id: this.lastID, email, name: name || 'Valued Client', phone: phone || '' }, 
@@ -275,7 +304,7 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-// 2. Login (Support Email OR Phone Number)
+// 2. Login (Support Email OR Phone Number + Single-Device Invalidation)
 app.post('/api/auth/login', (req, res) => {
   const { email, identifier, password } = req.body;
   const loginKey = (identifier || email || '').trim();
@@ -291,11 +320,41 @@ app.post('/api/auth/login', (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) return res.status(401).json({ error: 'Incorrect password' });
     
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ 
-      message: 'Login successful', 
-      user: { id: user.id, email: user.email, name: user.name, phone: user.phone, address: user.address }, 
-      token 
+    // Invalidate all previous device sessions by generating a new session_token
+    const session_token = crypto.randomBytes(24).toString('hex');
+    db.run('UPDATE users SET session_token = ? WHERE id = ?', [session_token, user.id], (updErr) => {
+      if (updErr) return res.status(500).json({ error: updErr.message });
+      
+      const token = jwt.sign({ id: user.id, email: user.email, session_token }, JWT_SECRET, { expiresIn: '7d' });
+      res.json({ 
+        message: 'Login successful', 
+        user: { id: user.id, email: user.email, name: user.name, phone: user.phone, address: user.address }, 
+        token 
+      });
+    });
+  });
+});
+
+// 2.1 Verify Active Session (Used for live single-device kickout)
+app.get('/api/auth/verify-session', (req, res) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'NO_TOKEN' });
+
+  jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    if (err) return res.status(401).json({ error: 'SESSION_TERMINATED', message: 'Session expired.' });
+
+    db.get('SELECT session_token FROM users WHERE id = ?', [decoded.id], (dbErr, user) => {
+      if (dbErr || !user) return res.status(401).json({ error: 'SESSION_TERMINATED', message: 'User not found.' });
+
+      if (user.session_token && decoded.session_token && user.session_token !== decoded.session_token) {
+        return res.status(401).json({
+          error: 'SESSION_TERMINATED',
+          message: 'Your account was logged into from another device. You have been logged out on this device.'
+        });
+      }
+
+      res.json({ valid: true, user_id: decoded.id });
     });
   });
 });
@@ -320,7 +379,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
 });
 
 // 3. Update User Address
-app.post('/api/user/address', (req, res) => {
+app.post('/api/user/address', authenticateUser, (req, res) => {
   const { user_id, name, address } = req.body;
   db.run('UPDATE users SET name = ?, address = ? WHERE id = ?', [name, address, user_id], function(err) {
     if (err) return res.status(500).json({ error: err.message });
@@ -329,7 +388,7 @@ app.post('/api/user/address', (req, res) => {
 });
 
 // 3.5 Delete User Account
-app.delete('/api/user/:id', (req, res) => {
+app.delete('/api/user/:id', authenticateUser, (req, res) => {
   const { id } = req.params;
   db.run('DELETE FROM users WHERE id = ?', [id], function(err) {
     if (err) return res.status(500).json({ error: err.message });
@@ -339,7 +398,7 @@ app.delete('/api/user/:id', (req, res) => {
 });
 
 // 4. Submit Request
-app.post('/api/requests', (req, res) => {
+app.post('/api/requests', authenticateUser, (req, res) => {
   const { user_id, product_id, size, color } = req.body;
   if (!user_id || !product_id) return res.status(400).json({ error: 'Missing data' });
 
@@ -350,7 +409,7 @@ app.post('/api/requests', (req, res) => {
 });
 
 // 4.5 Delete Request
-app.delete('/api/requests/:id', (req, res) => {
+app.delete('/api/requests/:id', authenticateUser, (req, res) => {
   const { id } = req.params;
   db.run('DELETE FROM requests WHERE id = ?', [id], function(err) {
     if (err) return res.status(500).json({ error: err.message });
@@ -359,7 +418,7 @@ app.delete('/api/requests/:id', (req, res) => {
 });
 
 // 5. Get User Requests
-app.get('/api/requests', (req, res) => {
+app.get('/api/requests', authenticateUser, (req, res) => {
   const { user_id } = req.query;
   const query = `
     SELECT r.*, p.name as product_name, p.price, p.image_url 

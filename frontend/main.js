@@ -4,6 +4,30 @@ document.addEventListener('DOMContentLoaded', () => {
   let selectedSize = null;
   let selectedColor = null;
 
+  function getUserAuthHeaders() {
+    const token = localStorage.getItem('az_token');
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+  }
+
+  function handleSessionTerminated() {
+    localStorage.removeItem('az_user');
+    localStorage.removeItem('az_token');
+    currentUser = null;
+    alert("⚠️ Security Alert: Your account was logged into from another device. You have been logged out on this device.");
+    window.location.reload();
+  }
+
+  function verifyActiveSession() {
+    if (!currentUser || !currentUser.id || !localStorage.getItem('az_token')) return;
+    fetch('/api/auth/verify-session', {
+      headers: getUserAuthHeaders()
+    }).then(r => {
+      if (r.status === 401) {
+        handleSessionTerminated();
+      }
+    }).catch(() => {});
+  }
+
   function updateNavUser() {
     const navUser = document.getElementById('navAccountUser');
     if (navUser) {
@@ -22,10 +46,18 @@ document.addEventListener('DOMContentLoaded', () => {
       if (badge) badge.style.display = 'none';
       return;
     }
-    fetch(`/api/requests?user_id=${currentUser.id}`)
-      .then(r => r.json())
+    fetch(`/api/requests?user_id=${currentUser.id}`, {
+      headers: getUserAuthHeaders()
+    })
+      .then(r => {
+        if (r.status === 401) {
+          handleSessionTerminated();
+          return null;
+        }
+        return r.json();
+      })
       .then(allReqs => {
-        if (!Array.isArray(allReqs)) return;
+        if (!allReqs || !Array.isArray(allReqs)) return;
         const activeReqs = allReqs.filter(r => r.status !== 'paid');
         if (badge) {
           if (activeReqs.length > 0) {
@@ -87,12 +119,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Poll for request updates and notifications every 25 seconds
+  // Poll for request updates, notifications, and verify active single-device session every 15 seconds
   setInterval(() => {
     if (currentUser && currentUser.id) {
+      verifyActiveSession();
       updateMyRequestsBadge();
     }
-  }, 25000);
+  }, 15000);
 
   // Request Web Notification permission as soon as opening the website
   function initNotificationPermission() {
@@ -123,6 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initNotificationPermission();
 
   updateNavUser();
+  verifyActiveSession();
   updateMyRequestsBadge();
 
   // Initial Onboarding Check
@@ -592,9 +626,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const ordersList = document.getElementById('accOrdersList');
     ordersList.innerHTML = '<p>Loading your orders...</p>';
     
-    fetch(`/api/requests?user_id=${currentUser.id}`)
-      .then(r => r.json())
+    fetch(`/api/requests?user_id=${currentUser.id}`, {
+      headers: getUserAuthHeaders()
+    })
+      .then(r => {
+        if (r.status === 401) {
+          handleSessionTerminated();
+          return null;
+        }
+        return r.json();
+      })
       .then(reqs => {
+        if (!reqs) return;
         ordersList.innerHTML = '';
         const paidReqs = reqs.filter(r => r.status === 'paid');
         if (paidReqs.length === 0) {
@@ -678,9 +721,13 @@ document.addEventListener('DOMContentLoaded', () => {
       
       fetch('/api/user/address', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getUserAuthHeaders() },
         body: JSON.stringify({ user_id: currentUser.id, name: currentUser.name, address: addressArrStr })
-      }).then(() => {
+      }).then(r => {
+        if (r.status === 401) {
+          handleSessionTerminated();
+          return;
+        }
         currentUser.address = addressArrStr;
         localStorage.setItem('az_user', JSON.stringify(currentUser));
         
@@ -707,8 +754,13 @@ document.addEventListener('DOMContentLoaded', () => {
   window.deleteAccount = () => {
     if (confirm("Are you sure you want to permanently delete your account? This action cannot be undone.")) {
       fetch('/api/user/' + currentUser.id, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: getUserAuthHeaders()
       }).then(res => {
+        if (res.status === 401) {
+          handleSessionTerminated();
+          return;
+        }
         if (!res.ok) throw new Error('Failed to delete account');
         alert("Your account has been deleted.");
         localStorage.removeItem('az_user');
@@ -934,14 +986,21 @@ document.addEventListener('DOMContentLoaded', () => {
     
     fetch('/api/requests', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getUserAuthHeaders() },
       body: JSON.stringify({
         user_id: currentUser.id,
         product_id: selectedProduct.id,
         size: selectedSize,
         color: selectedProduct.colors ? selectedProduct.colors[0] : 'Default'
       })
-    }).then(r => r.json()).then(res => {
+    }).then(r => {
+      if (r.status === 401) {
+        handleSessionTerminated();
+        return null;
+      }
+      return r.json();
+    }).then(res => {
+      if (!res) return;
       if (res.error) {
         pdRequestBtn.innerHTML = originalText;
         return alert(res.error);
@@ -1050,9 +1109,13 @@ document.addEventListener('DOMContentLoaded', () => {
         
         fetch('/api/user/address', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...getUserAuthHeaders() },
           body: JSON.stringify({ user_id: currentUser.id, name: currentUser.name, address: addressArrStr })
-        }).then(() => {
+        }).then(r => {
+          if (r.status === 401) {
+            handleSessionTerminated();
+            return;
+          }
           currentUser.address = addressArrStr;
           localStorage.setItem('az_user', JSON.stringify(currentUser));
           callback();
@@ -1085,9 +1148,18 @@ document.addEventListener('DOMContentLoaded', () => {
     list.innerHTML = '<p style="padding: 20px;">Loading...</p>';
     document.getElementById('requestsModal').classList.add('active');
     
-    fetch(`/api/requests?user_id=${currentUser.id}`)
-      .then(r => r.json())
+    fetch(`/api/requests?user_id=${currentUser.id}`, {
+      headers: getUserAuthHeaders()
+    })
+      .then(r => {
+        if (r.status === 401) {
+          handleSessionTerminated();
+          return null;
+        }
+        return r.json();
+      })
       .then(allReqs => {
+        if (!allReqs) return;
         updateMyRequestsBadge();
         const reqs = allReqs.filter(r => r.status !== 'paid');
         list.innerHTML = '';
@@ -1156,14 +1228,21 @@ document.addEventListener('DOMContentLoaded', () => {
               alert("Test Payment Successful! (Bypassing Razorpay)");
               fetch('/api/razorpay/verify', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...getUserAuthHeaders() },
                 body: JSON.stringify({ test_mode: true, req_ids: payIds.join(',') })
-              }).then(r => r.json()).then(verifyRes => {
-                  document.getElementById('requestsModal').classList.remove('active');
-                  const confModal = document.getElementById('orderConfirmationModal');
-                  document.getElementById('confirmOrderId').innerText = "TEST-" + Math.floor(Math.random()*10000);
-                  confModal.classList.add('active');
-                  updateMyRequestsBadge();
+              }).then(r => {
+                if (r.status === 401) {
+                  handleSessionTerminated();
+                  return null;
+                }
+                return r.json();
+              }).then(verifyRes => {
+                if (!verifyRes) return;
+                document.getElementById('requestsModal').classList.remove('active');
+                const confModal = document.getElementById('orderConfirmationModal');
+                document.getElementById('confirmOrderId').innerText = "TEST-" + Math.floor(Math.random()*10000);
+                confModal.classList.add('active');
+                updateMyRequestsBadge();
               });
             });
           };
@@ -1184,8 +1263,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!confirm("Are you sure you want to remove this request?")) return;
     
     fetch(`/api/requests/${reqId}`, {
-      method: 'DELETE'
-    }).then(r => r.json()).then(res => {
+      method: 'DELETE',
+      headers: getUserAuthHeaders()
+    }).then(r => {
+      if (r.status === 401) {
+        handleSessionTerminated();
+        return null;
+      }
+      return r.json();
+    }).then(res => {
+      if (!res) return;
       if (res.error) return alert(res.error);
       updateMyRequestsBadge();
       openRequestsModal(); // Refresh modal
@@ -1199,9 +1286,16 @@ document.addEventListener('DOMContentLoaded', () => {
     alert("Initiating secure checkout... Please wait.");
     fetch('/api/razorpay/create-order', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getUserAuthHeaders() },
       body: JSON.stringify({ amount })
-    }).then(r => r.json()).then(order => {
+    }).then(r => {
+      if (r.status === 401) {
+        handleSessionTerminated();
+        return null;
+      }
+      return r.json();
+    }).then(order => {
+      if (!order) return;
       if (order.error) {
         return alert("Order Creation Error: " + order.error);
       }
@@ -1216,13 +1310,20 @@ document.addEventListener('DOMContentLoaded', () => {
         "handler": function (response) {
           fetch('/api/razorpay/verify', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...getUserAuthHeaders() },
             body: JSON.stringify({
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature
             })
-          }).then(r => r.json()).then(verifyRes => {
+          }).then(r => {
+            if (r.status === 401) {
+              handleSessionTerminated();
+              return null;
+            }
+            return r.json();
+          }).then(verifyRes => {
+            if (!verifyRes) return;
             if (verifyRes.error) {
               alert('Payment Verification Failed: ' + verifyRes.error);
             } else {
