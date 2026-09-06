@@ -44,6 +44,15 @@ app.use('/api/', generalLimiter);
 app.use('/api/auth/', authLimiter);
 app.use('/api/admin/login', authLimiter);
 
+// Prevent proxy, carrier NAT, and CDN caching on dynamic API routes
+app.use('/api/', (req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  res.set('Surrogate-Control', 'no-store');
+  next();
+});
+
 // 4. Secure File Upload with Multer (Type and Size Validation)
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -128,20 +137,40 @@ app.get('/api/products', (req, res) => {
   db.all(query, params, (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     // Parse JSON fields
-    const parsedRows = rows.map(r => ({
-      ...r,
-      sizes: r.sizes ? JSON.parse(r.sizes) : [],
-      colors: r.colors ? JSON.parse(r.colors) : [],
-      reviews: r.reviews ? JSON.parse(r.reviews) : []
-    }));
+    const parsedRows = rows.map(r => {
+      let images = [];
+      if (r.image_url) {
+        try {
+          const parsed = JSON.parse(r.image_url);
+          if (Array.isArray(parsed)) images = parsed;
+          else images = [r.image_url];
+        } catch(e) {
+          images = [r.image_url];
+        }
+      }
+      return {
+        ...r,
+        image_url: images[0] || r.image_url || '/images/col_daily.png',
+        images: images.length > 0 ? images : [r.image_url || '/images/col_daily.png'],
+        sizes: r.sizes ? JSON.parse(r.sizes) : [],
+        colors: r.colors ? JSON.parse(r.colors) : [],
+        reviews: r.reviews ? JSON.parse(r.reviews) : []
+      };
+    });
     res.json(parsedRows);
   });
 });
 
-  // Admin: Add Product
-  app.post('/api/admin/products', authenticateAdmin, upload.single('image'), (req, res) => {
+  // Admin: Add Product (Multiple images support)
+  app.post('/api/admin/products', authenticateAdmin, upload.array('images', 10), (req, res) => {
     const { name, description, price, collection_id, sizes, category } = req.body;
-    const image_url = req.file ? '/images/' + req.file.filename : '';
+    let imageUrls = [];
+    if (req.files && req.files.length > 0) {
+      imageUrls = req.files.map(f => '/images/' + f.filename);
+    } else if (req.file) {
+      imageUrls = ['/images/' + req.file.filename];
+    }
+    const image_url = imageUrls.length > 0 ? JSON.stringify(imageUrls) : '';
     
     // Parse sizes (expected comma separated)
     let sizesArr = [];
@@ -167,16 +196,23 @@ app.get('/api/products', (req, res) => {
     });
   });
 
-  // Admin: Update Product
-  app.put('/api/admin/products/:id', authenticateAdmin, upload.single('image'), (req, res) => {
+  // Admin: Update Product (Multiple images support)
+  app.put('/api/admin/products/:id', authenticateAdmin, upload.array('images', 10), (req, res) => {
     const { name, description, price, collection_id, sizes } = req.body;
     let sizesArr = [];
     if (sizes) {
       sizesArr = sizes.split(',').map(s => s.trim());
     }
 
-    if (req.file) {
-      const image_url = '/images/' + req.file.filename;
+    let imageUrls = [];
+    if (req.files && req.files.length > 0) {
+      imageUrls = req.files.map(f => '/images/' + f.filename);
+    } else if (req.file) {
+      imageUrls = ['/images/' + req.file.filename];
+    }
+
+    if (imageUrls.length > 0) {
+      const image_url = JSON.stringify(imageUrls);
       db.run(
         'UPDATE products SET name = ?, description = ?, price = ?, image_url = ?, collection_id = ?, sizes = ? WHERE id = ?',
         [name, description, parseFloat(price), image_url, collection_id || null, JSON.stringify(sizesArr), req.params.id],
@@ -212,34 +248,43 @@ app.post('/api/inquiries', (req, res) => {
 
 // 1. Register Account
 app.post('/api/auth/register', async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, phone, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
   try {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    db.run('INSERT INTO users (email, password_hash, name) VALUES (?, ?, ?)', [email, hashedPassword, name || null], function (err) {
+    db.run('INSERT INTO users (email, password_hash, name, phone) VALUES (?, ?, ?, ?)', [email, hashedPassword, name || null, phone || null], function (err) {
       if (err) {
         if (err.message.includes('UNIQUE constraint failed')) {
-          return res.status(400).json({ error: 'Email already exists' });
+          return res.status(400).json({ error: 'An account with this email already exists. Please login.' });
         }
         return res.status(500).json({ error: err.message });
       }
       
       const token = jwt.sign({ id: this.lastID, email }, JWT_SECRET, { expiresIn: '7d' });
-      res.status(201).json({ message: 'Account created successfully', user: { id: this.lastID, email }, token });
+      res.status(201).json({ 
+        message: 'Account created successfully', 
+        user: { id: this.lastID, email, name: name || 'Valued Client', phone: phone || '' }, 
+        token 
+      });
     });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// 2. Login
+// 2. Login (Support Email OR Phone Number)
 app.post('/api/auth/login', (req, res) => {
-  const { email, password } = req.body;
+  const { email, identifier, password } = req.body;
+  const loginKey = (identifier || email || '').trim();
   
-  db.get('SELECT * FROM users WHERE email = ?', [email], async (err, user) => {
+  if (!loginKey || !password) {
+    return res.status(400).json({ error: 'Email or phone number and password are required' });
+  }
+  
+  db.get('SELECT * FROM users WHERE email = ? OR phone = ?', [loginKey, loginKey], async (err, user) => {
     if (err) return res.status(500).json({ error: err.message });
     if (!user) return res.status(401).json({ error: "Account doesn't exist. Please sign up." });
     
@@ -247,7 +292,11 @@ app.post('/api/auth/login', (req, res) => {
     if (!isMatch) return res.status(401).json({ error: 'Incorrect password' });
     
     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ message: 'Login successful', user: { id: user.id, email: user.email, name: user.name, address: user.address }, token });
+    res.json({ 
+      message: 'Login successful', 
+      user: { id: user.id, email: user.email, name: user.name, phone: user.phone, address: user.address }, 
+      token 
+    });
   });
 });
 
@@ -321,14 +370,27 @@ app.get('/api/requests', (req, res) => {
   `;
   db.all(query, [user_id], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
+    const parsedRows = rows.map(r => {
+      let primaryImage = r.image_url;
+      try {
+        if (primaryImage && primaryImage.startsWith('[')) {
+          const arr = JSON.parse(primaryImage);
+          if (Array.isArray(arr) && arr.length > 0) primaryImage = arr[0];
+        }
+      } catch(e) {}
+      return {
+        ...r,
+        image_url: primaryImage || '/images/col_daily.png'
+      };
+    });
+    res.json(parsedRows);
   });
 });
 
   // 6. Admin: Get All Requests
   app.get('/api/admin/requests', authenticateAdmin, (req, res) => {
     const query = `
-      SELECT r.*, p.name as product_name, p.price, p.image_url, u.name as user_name, u.email as user_email
+      SELECT r.*, p.name as product_name, p.price, p.image_url, u.name as user_name, u.email as user_email, u.phone as user_phone
       FROM requests r 
       JOIN products p ON r.product_id = p.id 
       JOIN users u ON r.user_id = u.id
@@ -336,7 +398,20 @@ app.get('/api/requests', (req, res) => {
     `;
     db.all(query, [], (err, rows) => {
       if (err) return res.status(500).json({ error: err.message });
-      res.json(rows);
+      const parsedRows = rows.map(r => {
+        let primaryImage = r.image_url;
+        try {
+          if (primaryImage && primaryImage.startsWith('[')) {
+            const arr = JSON.parse(primaryImage);
+            if (Array.isArray(arr) && arr.length > 0) primaryImage = arr[0];
+          }
+        } catch(e) {}
+        return {
+          ...r,
+          image_url: primaryImage || '/images/col_daily.png'
+        };
+      });
+      res.json(parsedRows);
     });
   });
 

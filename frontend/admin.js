@@ -122,7 +122,38 @@ function loadProducts() {
     .catch(err => console.error('Error loading products:', err));
 }
 
-// Add Product
+// Image preview helper
+function handleMultiFilePreview(inputEl, previewContainerId) {
+  const container = document.getElementById(previewContainerId);
+  if (!container) return;
+  container.innerHTML = '';
+  if (inputEl.files) {
+    Array.from(inputEl.files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = document.createElement('img');
+        img.src = e.target.result;
+        img.style.width = '60px';
+        img.style.height = '60px';
+        img.style.objectFit = 'cover';
+        img.style.borderRadius = '6px';
+        img.style.border = '1px solid var(--gold)';
+        container.appendChild(img);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+}
+
+document.getElementById('addImages')?.addEventListener('change', function() {
+  handleMultiFilePreview(this, 'addImagePreview');
+});
+
+document.getElementById('editImages')?.addEventListener('change', function() {
+  handleMultiFilePreview(this, 'editImagePreview');
+});
+
+// Add Product (Multiple images support)
 document.getElementById('addProductForm').addEventListener('submit', (e) => {
   e.preventDefault();
   
@@ -132,7 +163,14 @@ document.getElementById('addProductForm').addEventListener('submit', (e) => {
   formData.append('price', document.getElementById('addPrice').value);
   formData.append('collection_id', document.getElementById('addCollection').value);
   formData.append('sizes', document.getElementById('addSizes').value);
-  formData.append('image', document.getElementById('addImage').files[0]);
+  
+  const files = document.getElementById('addImages').files;
+  if (!files || files.length === 0) {
+    return alert("Please select at least one product image.");
+  }
+  for (let i = 0; i < files.length; i++) {
+    formData.append('images', files[i]);
+  }
 
   fetch('/api/admin/products', {
     method: 'POST',
@@ -144,10 +182,11 @@ document.getElementById('addProductForm').addEventListener('submit', (e) => {
     if(res.error) return alert(res.error);
     alert('Product uploaded successfully!');
     document.getElementById('addProductForm').reset();
+    document.getElementById('addImagePreview').innerHTML = '';
     loadProducts();
   }).catch(err => {
     console.error(err);
-    alert('Upload failed. Please check image format and size (max 5MB).');
+    alert('Upload failed. Please check image format and size (max 5MB each).');
   });
 });
 
@@ -160,12 +199,13 @@ window.openEditProduct = (encodedProduct) => {
   document.getElementById('editPrice').value = p.price;
   document.getElementById('editCollection').value = p.collection_id || '';
   document.getElementById('editSizes').value = (p.sizes || []).join(', ');
-  document.getElementById('editImage').value = ''; // Reset file input
+  document.getElementById('editImages').value = ''; // Reset file input
+  document.getElementById('editImagePreview').innerHTML = '';
   
   document.getElementById('editProductModal').style.display = 'flex';
 };
 
-// Edit Product Submit
+// Edit Product Submit (Multiple images support)
 document.getElementById('editProductForm').addEventListener('submit', (e) => {
   e.preventDefault();
   const id = document.getElementById('editId').value;
@@ -177,9 +217,11 @@ document.getElementById('editProductForm').addEventListener('submit', (e) => {
   formData.append('collection_id', document.getElementById('editCollection').value);
   formData.append('sizes', document.getElementById('editSizes').value);
   
-  const imageFile = document.getElementById('editImage').files[0];
-  if(imageFile) {
-    formData.append('image', imageFile);
+  const files = document.getElementById('editImages').files;
+  if (files && files.length > 0) {
+    for (let i = 0; i < files.length; i++) {
+      formData.append('images', files[i]);
+    }
   }
 
   fetch('/api/admin/products/' + id, {
@@ -216,7 +258,7 @@ window.deleteProduct = (id) => {
   });
 };
 
-// Load Requests
+// Load Requests (with Product Images, Badges, and Client Contact)
 function loadRequests() {
   fetch('/api/admin/requests', {
     headers: getAuthHeaders()
@@ -227,26 +269,72 @@ function loadRequests() {
     if (!tbody) return;
     tbody.innerHTML = '';
     if (!Array.isArray(reqs)) return;
+
+    // Update Notification Badge on Tab
+    const pendingCount = reqs.filter(req => req.status === 'pending').length;
+    const badge = document.getElementById('adminRequestsBadge');
+    if (badge) {
+      if (pendingCount > 0) {
+        badge.innerText = pendingCount;
+        badge.style.display = 'inline-block';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+
     reqs.forEach(r => {
       let statusBadge = r.status;
-      if(r.status === 'pending') statusBadge = '<span style="color:#ff9800;">PENDING</span>';
-      if(r.status === 'available') statusBadge = '<span style="color:#4caf50;">AVAILABLE (Awaiting Payment)</span>';
-      if(r.status === 'paid') statusBadge = '<span style="color:#2196f3;">PAID (Order Placed)</span>';
-      if(r.status === 'declined') statusBadge = '<span style="color:#f44336;">DECLINED</span>';
+      if(r.status === 'pending') statusBadge = '<span style="color:#ff9800; font-weight:bold;">PENDING</span>';
+      if(r.status === 'available') statusBadge = '<span style="color:#4caf50; font-weight:bold;">AVAILABLE (Awaiting Pay)</span>';
+      if(r.status === 'paid') statusBadge = '<span style="color:#2196f3; font-weight:bold;">PAID (Order Confirmed)</span>';
+      if(r.status === 'declined') statusBadge = '<span style="color:#f44336; font-weight:bold;">DECLINED</span>';
+
+      let cleanPhone = (r.user_phone || '').replace(/[^0-9]/g, '');
+      if (cleanPhone.length === 10) cleanPhone = '91' + cleanPhone;
+
+      let waMsg = encodeURIComponent(`Hello ${r.user_name || 'Valued Client'},\n\nGreetings from AZ Fashion! ✨\nYour request for exclusive piece "${r.product_name}" (Size: ${r.size}) has been APPROVED and is reserved for you.\n\nPlease visit our boutique website to complete your order:\n${window.location.origin}\n\nThank you!`);
+      let waLink = cleanPhone ? `https://wa.me/${cleanPhone}?text=${waMsg}` : '';
+
+      let notifyBtn = '';
+      if (waLink) {
+        notifyBtn = `
+          <a href="${waLink}" target="_blank" class="btn-action" style="background: #25D366; color: white; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 4px; font-size: 0.8rem; margin-top: 5px;" title="Send WhatsApp alert to client">
+            <i class="fab fa-whatsapp"></i> WhatsApp Notify
+          </a>
+        `;
+      }
 
       let actionBtns = '';
       if(r.status === 'pending') {
         actionBtns = `
-          <button class="btn-action" onclick="approveRequest(${r.id})">Approve</button>
-          <button class="btn-action btn-danger" onclick="declineRequest(${r.id})">Decline</button>
+          <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+            <button class="btn-action" onclick="approveRequest(${r.id}, '${cleanPhone}', '${encodeURIComponent(r.product_name || '')}', '${encodeURIComponent(r.user_name || '')}')">Approve</button>
+            <button class="btn-action btn-danger" onclick="declineRequest(${r.id})">Decline</button>
+          </div>
+          ${notifyBtn}
         `;
+      } else if (r.status === 'available') {
+        actionBtns = notifyBtn;
       }
+
+      let imgSrc = r.image_url || '/images/col_daily.png';
+      try {
+        if (imgSrc.startsWith('[')) {
+          const arr = JSON.parse(imgSrc);
+          if (Array.isArray(arr) && arr.length > 0) imgSrc = arr[0];
+        }
+      } catch(e) {}
 
       tbody.innerHTML += `
         <tr>
+          <td><img src="${imgSrc}" alt="Product" style="width: 55px; height: 70px; object-fit: cover; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1);"></td>
           <td>${new Date(r.created_at).toLocaleDateString()}</td>
-          <td>${r.user_name || 'Client'} <br> <small style="opacity:0.7">${r.user_email || ''}</small></td>
-          <td>${r.product_name}</td>
+          <td>
+            <strong>${r.user_name || 'Client'}</strong>
+            <br><small style="opacity:0.7">${r.user_email || ''}</small>
+            ${r.user_phone ? `<br><small style="color:var(--gold);"><i class="fas fa-phone"></i> ${r.user_phone}</small>` : ''}
+          </td>
+          <td>${r.product_name} <br><small style="color:var(--gold);">₹${r.price}</small></td>
           <td>${r.size || 'N/A'}</td>
           <td>${statusBadge}</td>
           <td>${actionBtns}</td>
@@ -257,7 +345,7 @@ function loadRequests() {
 }
 
 // Approve Request
-window.approveRequest = (id) => {
+window.approveRequest = (id, phone, prodName, userName) => {
   if(!confirm("Approve this request? The user will be able to checkout.")) return;
   fetch('/api/requests/' + id + '/approve', {
     method: 'POST',
@@ -267,6 +355,17 @@ window.approveRequest = (id) => {
     const res = await r.json();
     if(res.error) return alert(res.error);
     loadRequests();
+
+    if (phone) {
+      setTimeout(() => {
+        if (confirm("Request approved! Would you like to send a WhatsApp notification to the client now?")) {
+          const decodedProd = decodeURIComponent(prodName || 'your requested item');
+          const decodedUser = decodeURIComponent(userName || 'Valued Client');
+          const msg = encodeURIComponent(`Hello ${decodedUser},\n\nGreetings from AZ Fashion! ✨\nYour request for exclusive piece "${decodedProd}" has been APPROVED and is reserved for you.\n\nPlease visit our boutique website to complete your order:\n${window.location.origin}\n\nThank you!`);
+          window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
+        }
+      }, 300);
+    }
   }).catch(err => {
     console.error(err);
     alert('Approval failed');

@@ -4,6 +4,99 @@ document.addEventListener('DOMContentLoaded', () => {
   let selectedSize = null;
   let selectedColor = null;
 
+  function updateNavUser() {
+    const navUser = document.getElementById('navAccountUser');
+    if (navUser) {
+      if (currentUser && currentUser.name) {
+        const firstName = currentUser.name.split(' ')[0];
+        navUser.innerText = firstName;
+      } else {
+        navUser.innerText = 'Account';
+      }
+    }
+  }
+
+  function updateMyRequestsBadge() {
+    const badge = document.getElementById('myRequestsBadge');
+    if (!currentUser || !currentUser.id) {
+      if (badge) badge.style.display = 'none';
+      return;
+    }
+    fetch(`/api/requests?user_id=${currentUser.id}`)
+      .then(r => r.json())
+      .then(allReqs => {
+        if (!Array.isArray(allReqs)) return;
+        const activeReqs = allReqs.filter(r => r.status !== 'paid');
+        if (badge) {
+          if (activeReqs.length > 0) {
+            badge.innerText = activeReqs.length;
+            badge.style.display = 'inline-block';
+          } else {
+            badge.style.display = 'none';
+          }
+        }
+
+        // Check for approved ('available') requests and notify the client
+        const availableReqs = allReqs.filter(r => r.status === 'available');
+        availableReqs.forEach(req => {
+          const notifKey = `az_notif_seen_${req.id}`;
+          if (!sessionStorage.getItem(notifKey)) {
+            sessionStorage.setItem(notifKey, 'true');
+            showInAppNotification(req);
+          }
+        });
+      })
+      .catch(() => {});
+  }
+
+  function showInAppNotification(req) {
+    const toast = document.getElementById('clientNotifyToast');
+    const title = document.getElementById('clientNotifyTitle');
+    const body = document.getElementById('clientNotifyBody');
+    const actBtn = document.getElementById('clientNotifyActionBtn');
+
+    if (toast && title && body && actBtn) {
+      title.innerText = '✨ Exclusive Request Approved!';
+      body.innerText = `Great news! Your request for "${req.product_name}" is approved & ready for checkout.`;
+      actBtn.onclick = () => {
+        toast.style.display = 'none';
+        window.openRequestsModal();
+      };
+      toast.style.display = 'block';
+
+      setTimeout(() => {
+        if (toast && toast.style.display !== 'none') {
+          toast.style.opacity = '0';
+          setTimeout(() => {
+            toast.style.display = 'none';
+            toast.style.opacity = '1';
+          }, 400);
+        }
+      }, 14000);
+    }
+
+    // Native Web Notifications API if supported and granted
+    if ("Notification" in window && Notification.permission === "granted") {
+      try {
+        let notifImg = req.image_url || '/images/col_daily.png';
+        new Notification("AZ Fashion - Request Approved!", {
+          body: `Your request for "${req.product_name}" has been approved! Tap to checkout.`,
+          icon: notifImg
+        });
+      } catch(e) {}
+    }
+  }
+
+  // Poll for request updates and notifications every 25 seconds
+  setInterval(() => {
+    if (currentUser && currentUser.id) {
+      updateMyRequestsBadge();
+    }
+  }, 25000);
+
+  updateNavUser();
+  updateMyRequestsBadge();
+
   // Initial Onboarding Check
   const onboardingFlow = document.getElementById('onboardingFlow');
   const mainSite = document.getElementById('mainSite');
@@ -301,27 +394,74 @@ document.addEventListener('DOMContentLoaded', () => {
   const nameInput = document.getElementById('obNameInput');
   const forgotToggle = document.getElementById('obForgotPasswordToggle');
   const forgotBack = document.getElementById('obForgotBack');
-  
-  let isLoginMode = true;
 
-  authToggle?.addEventListener('click', () => {
-    isLoginMode = !isLoginMode;
+  const obTabSignup = document.getElementById('obTabSignup');
+  const obTabLogin = document.getElementById('obTabLogin');
+  const obPhoneGroup = document.getElementById('obPhoneGroup');
+  const obPhoneInput = document.getElementById('obPhoneInput');
+  const obEmailLabel = document.getElementById('obEmailLabel');
+  const obRememberRow = document.getElementById('obRememberRow');
+
+  let isLoginMode = false; // Default to Create Account for new visitors
+
+  function setAuthMode(loginMode) {
+    isLoginMode = loginMode;
     if (isLoginMode) {
-      authTitle.innerText = 'Enter your credentials to enter the boutique.';
-      authSubmitText.innerText = 'Login';
+      if (obTabLogin) {
+        obTabLogin.style.background = 'var(--gold)';
+        obTabLogin.style.color = '#000';
+        obTabLogin.style.borderColor = 'var(--gold)';
+        obTabLogin.style.fontWeight = 'bold';
+      }
+      if (obTabSignup) {
+        obTabSignup.style.background = 'transparent';
+        obTabSignup.style.color = '#fff';
+        obTabSignup.style.borderColor = 'rgba(255,255,255,0.2)';
+        obTabSignup.style.fontWeight = '500';
+      }
+      authTitle.innerText = 'Sign in to access your unique requests and account.';
+      authSubmitText.innerText = 'Sign In';
       authToggleText.innerText = "Don't have an account?";
-      authToggle.innerText = 'Sign up';
-      nameGroup.style.display = 'none';
-      nameInput.required = false;
+      authToggle.innerText = 'Create Account';
+      if (nameGroup) nameGroup.style.display = 'none';
+      if (nameInput) nameInput.required = false;
+      if (obPhoneGroup) obPhoneGroup.style.display = 'none';
+      if (obPhoneInput) obPhoneInput.required = false;
+      if (obEmailLabel) obEmailLabel.innerText = 'Email or Mobile Number';
+      if (document.getElementById('obEmailInput')) document.getElementById('obEmailInput').placeholder = 'Enter email or 10-digit mobile';
+      if (obRememberRow) obRememberRow.style.display = 'flex';
     } else {
-      authTitle.innerText = 'Create an account to join our exclusive clientele.';
-      authSubmitText.innerText = 'Create Account';
-      authToggleText.innerText = "Already have an account?";
-      authToggle.innerText = 'Login';
-      nameGroup.style.display = 'flex';
-      nameInput.required = true;
+      if (obTabSignup) {
+        obTabSignup.style.background = 'var(--gold)';
+        obTabSignup.style.color = '#000';
+        obTabSignup.style.borderColor = 'var(--gold)';
+        obTabSignup.style.fontWeight = 'bold';
+      }
+      if (obTabLogin) {
+        obTabLogin.style.background = 'transparent';
+        obTabLogin.style.color = '#fff';
+        obTabLogin.style.borderColor = 'rgba(255,255,255,0.2)';
+        obTabLogin.style.fontWeight = '500';
+      }
+      authTitle.innerText = 'Create your exclusive client account to enter the boutique.';
+      authSubmitText.innerText = 'Create Account & Enter';
+      authToggleText.innerText = 'Already have an account?';
+      authToggle.innerText = 'Sign in';
+      if (nameGroup) nameGroup.style.display = 'flex';
+      if (nameInput) nameInput.required = true;
+      if (obPhoneGroup) obPhoneGroup.style.display = 'flex';
+      if (obPhoneInput) obPhoneInput.required = true;
+      if (obEmailLabel) obEmailLabel.innerText = 'Email Address';
+      if (document.getElementById('obEmailInput')) document.getElementById('obEmailInput').placeholder = 'Enter your email';
+      if (obRememberRow) obRememberRow.style.display = 'none';
     }
-  });
+  }
+
+  obTabSignup?.addEventListener('click', () => setAuthMode(false));
+  obTabLogin?.addEventListener('click', () => setAuthMode(true));
+  authToggle?.addEventListener('click', () => setAuthMode(!isLoginMode));
+
+  setAuthMode(false); // Initial state is sign up
 
   forgotToggle?.addEventListener('click', () => {
     obAuthForm.style.display = 'none';
@@ -332,7 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
   forgotBack?.addEventListener('click', () => {
     obForgotForm.style.display = 'none';
     obAuthForm.style.display = 'flex';
-    authTitle.innerText = isLoginMode ? 'Enter your credentials to enter the boutique.' : 'Create an account to join our exclusive clientele.';
+    authTitle.innerText = isLoginMode ? 'Sign in to access your unique requests and account.' : 'Create your exclusive client account to enter the boutique.';
   });
 
   obForgotForm?.addEventListener('submit', (e) => {
@@ -363,35 +503,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
   obAuthForm?.addEventListener('submit', (e) => {
     e.preventDefault();
-    const name = nameInput.value;
-    const email = document.getElementById('obEmailInput').value;
+    const name = nameInput ? nameInput.value.trim() : '';
+    const emailOrIdentifier = document.getElementById('obEmailInput').value.trim();
+    const phone = obPhoneInput ? obPhoneInput.value.trim() : '';
     const password = document.getElementById('obPasswordInput').value;
     
     const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/register';
-    const body = isLoginMode ? { email, password } : { name, email, password };
+    const body = isLoginMode 
+      ? { identifier: emailOrIdentifier, password } 
+      : { name, email: emailOrIdentifier, phone, password };
     
+    const origSubmitText = authSubmitText.innerText;
+    authSubmitText.innerText = 'Authenticating...';
+
     fetch(`${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     }).then(r => r.json()).then(res => {
+      authSubmitText.innerText = origSubmitText;
       if (res.error) return alert(res.error);
       
-      if (!isLoginMode) {
-        // Successful Signup
-        alert("Account created successfully! Please login.");
-        document.getElementById('obPasswordInput').value = ''; // clear password
-        authToggle.click(); // switch back to login mode
-        return;
-      }
-      
-      // Successful Login
+      // Successful Login OR Sign Up
       currentUser = res.user;
       localStorage.setItem('az_user', JSON.stringify(currentUser));
       if (res.token) localStorage.setItem('az_token', res.token);
       
+      updateNavUser();
+      updateMyRequestsBadge();
+
       stepAuth.classList.remove('active');
       unlockMainSite();
+    }).catch(err => {
+      authSubmitText.innerText = origSubmitText;
+      console.error(err);
+      alert("Failed to connect to server. Please check your connection.");
     });
   });
 
@@ -403,6 +549,14 @@ document.addEventListener('DOMContentLoaded', () => {
     
     document.getElementById('accName').innerText = currentUser.name || 'Valued Client';
     document.getElementById('accEmail').innerText = currentUser.email || '';
+    const phoneDisplay = document.getElementById('accPhoneDisplay');
+    if (phoneDisplay) {
+      phoneDisplay.innerHTML = currentUser.phone ? '<i class="fas fa-phone"></i> ' + currentUser.phone : '';
+    }
+    const clientDisplay = document.getElementById('accClientId');
+    if (clientDisplay) {
+      clientDisplay.innerText = 'Account ID: #AZ-' + currentUser.id;
+    }
     
     renderAccountAddresses();
     
@@ -472,13 +626,18 @@ document.addEventListener('DOMContentLoaded', () => {
     accAddAddressForm.addEventListener('submit', (e) => {
       e.preventDefault();
       
-      const house = document.getElementById('accHouseNo').value;
-      const street = document.getElementById('accStreet').value;
-      const landmark = document.getElementById('accLandmark').value;
-      const city = document.getElementById('accCity').value;
-      const pin = document.getElementById('accPincode').value;
+      const house = document.getElementById('accHouseNo').value.trim();
+      const street = document.getElementById('accStreet').value.trim();
+      const landmark = document.getElementById('accLandmark').value.trim();
+      const city = document.getElementById('accCity').value.trim();
+      const pin = document.getElementById('accPincode').value.trim();
+      const phone = document.getElementById('accPhone') ? document.getElementById('accPhone').value.trim() : '';
       
-      const newAddr = `${house} ${street}, ${landmark ? 'Near '+landmark+', ' : ''}${city} - ${pin}`;
+      if (!house || !street || !city || !pin || !phone) {
+        return alert("Please fill all required address fields, including your mobile/phone number.");
+      }
+      
+      const newAddr = `${house} ${street}, ${landmark ? 'Near '+landmark+', ' : ''}${city} - ${pin} (Ph: ${phone})`;
       
       let addresses = [];
       if (currentUser.address) {
@@ -497,6 +656,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentUser.address = addressArrStr;
         localStorage.setItem('az_user', JSON.stringify(currentUser));
         
+        if (document.getElementById('accPhone')) document.getElementById('accPhone').value = '';
         document.getElementById('accHouseNo').value = '';
         document.getElementById('accStreet').value = '';
         document.getElementById('accLandmark').value = '';
@@ -571,7 +731,82 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('pdName').innerText = prod.name;
     document.getElementById('pdDesc').innerText = prod.description;
     document.getElementById('pdPrice').innerText = `₹${prod.price}`;
-    document.getElementById('pdImg').src = prod.image_url;
+
+    // Multi-image gallery setup
+    let images = prod.images || [];
+    if (!images || images.length === 0) {
+      images = [prod.image_url || '/images/col_daily.png'];
+    }
+    
+    let currentImgIdx = 0;
+    const pdImg = document.getElementById('pdImg');
+    const pdPrevImgBtn = document.getElementById('pdPrevImgBtn');
+    const pdNextImgBtn = document.getElementById('pdNextImgBtn');
+    const pdImgCounter = document.getElementById('pdImgCounter');
+    const pdThumbnailsList = document.getElementById('pdThumbnailsList');
+    
+    function showImage(idx) {
+      currentImgIdx = (idx + images.length) % images.length;
+      if (pdImg) {
+        pdImg.style.opacity = '0.3';
+        pdImg.src = images[currentImgIdx];
+        setTimeout(() => { pdImg.style.opacity = '1'; }, 100);
+      }
+      
+      if (images.length > 1) {
+        if (pdPrevImgBtn) pdPrevImgBtn.style.display = 'flex';
+        if (pdNextImgBtn) pdNextImgBtn.style.display = 'flex';
+        if (pdImgCounter) {
+          pdImgCounter.style.display = 'block';
+          pdImgCounter.innerText = `${currentImgIdx + 1} / ${images.length}`;
+        }
+        
+        // Highlight active thumbnail
+        if (pdThumbnailsList) {
+          Array.from(pdThumbnailsList.children).forEach((thumb, i) => {
+            thumb.style.borderColor = (i === currentImgIdx) ? 'var(--gold)' : 'rgba(255,255,255,0.2)';
+            thumb.style.opacity = (i === currentImgIdx) ? '1' : '0.5';
+          });
+        }
+      } else {
+        if (pdPrevImgBtn) pdPrevImgBtn.style.display = 'none';
+        if (pdNextImgBtn) pdNextImgBtn.style.display = 'none';
+        if (pdImgCounter) pdImgCounter.style.display = 'none';
+      }
+    }
+
+    if (pdThumbnailsList) {
+      pdThumbnailsList.innerHTML = '';
+      if (images.length > 1) {
+        images.forEach((img, i) => {
+          const thumb = document.createElement('img');
+          thumb.src = img;
+          thumb.style.cssText = 'width: 55px; height: 70px; object-fit: cover; border-radius: 6px; cursor: pointer; border: 2px solid rgba(255,255,255,0.2); opacity: 0.5; transition: 0.2s; flex-shrink: 0;';
+          thumb.onclick = () => showImage(i);
+          pdThumbnailsList.appendChild(thumb);
+        });
+      }
+    }
+
+    if (pdPrevImgBtn) pdPrevImgBtn.onclick = (e) => { e.stopPropagation(); showImage(currentImgIdx - 1); };
+    if (pdNextImgBtn) pdNextImgBtn.onclick = (e) => { e.stopPropagation(); showImage(currentImgIdx + 1); };
+    
+    // Mobile Touch Swiping on main image
+    let touchStartX = 0;
+    const mainImgWrap = document.querySelector('.product-main-img-wrap');
+    if (mainImgWrap) {
+      mainImgWrap.ontouchstart = (e) => { touchStartX = e.touches[0].clientX; };
+      mainImgWrap.ontouchend = (e) => {
+        const touchEndX = e.changedTouches[0].clientX;
+        if (touchStartX - touchEndX > 40 && images.length > 1) {
+          showImage(currentImgIdx + 1);
+        } else if (touchEndX - touchStartX > 40 && images.length > 1) {
+          showImage(currentImgIdx - 1);
+        }
+      };
+    }
+
+    showImage(0);
     
     // Render Sizes
     const sizesContainer = document.getElementById('pdSizes');
@@ -685,6 +920,13 @@ document.addEventListener('DOMContentLoaded', () => {
       pdRequestBtn.style.backgroundColor = '#4caf50';
       pdRequestBtn.style.borderColor = '#4caf50';
       
+      updateMyRequestsBadge();
+
+      // Request browser notification permission so client can get push alerts
+      if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission().catch(() => {});
+      }
+      
       setTimeout(() => {
         pdModal.classList.remove('active');
         // Reset after modal closes
@@ -759,15 +1001,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const validateAndSaveAddress = (callback) => {
       if (addrSelect.value === 'new') {
-        const house = document.getElementById('cartHouseNo').value;
-        const street = document.getElementById('cartStreet').value;
-        const landmark = document.getElementById('cartLandmark').value;
-        const city = document.getElementById('cartCity').value;
-        const pin = document.getElementById('cartPincode').value;
+        const house = document.getElementById('cartHouseNo').value.trim();
+        const street = document.getElementById('cartStreet').value.trim();
+        const landmark = document.getElementById('cartLandmark').value.trim();
+        const city = document.getElementById('cartCity').value.trim();
+        const pin = document.getElementById('cartPincode').value.trim();
+        const phone = document.getElementById('cartPhone') ? document.getElementById('cartPhone').value.trim() : '';
         
-        if (!house || !street || !city || !pin) return alert("Please fill all required address fields.");
+        if (!house || !street || !city || !pin || !phone) {
+          return alert("Please fill all required address fields, including your mobile/phone number.");
+        }
         
-        const newAddr = `${house} ${street}, ${landmark ? 'Near '+landmark+', ' : ''}${city} - ${pin}`;
+        const newAddr = `${house} ${street}, ${landmark ? 'Near '+landmark+', ' : ''}${city} - ${pin} (Ph: ${phone})`;
         addresses.push(newAddr);
         const addressArrStr = JSON.stringify(addresses);
         
@@ -786,6 +1031,24 @@ document.addEventListener('DOMContentLoaded', () => {
         callback();
       }
     };
+
+    const cartSaveAddressBtn = document.getElementById('cartSaveAddressBtn');
+    if (cartSaveAddressBtn) {
+      cartSaveAddressBtn.onclick = () => {
+        validateAndSaveAddress(() => {
+          while(addrSelect.options.length > 2) { addrSelect.remove(2); }
+          addresses.forEach(addr => {
+            const opt = document.createElement('option');
+            opt.value = addr;
+            opt.text = addr;
+            addrSelect.add(opt);
+          });
+          addrSelect.value = addresses[addresses.length - 1];
+          newAddrForm.style.display = 'none';
+          alert("Shipping address saved successfully!");
+        });
+      };
+    }
     
     list.innerHTML = '<p style="padding: 20px;">Loading...</p>';
     document.getElementById('requestsModal').classList.add('active');
@@ -793,6 +1056,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fetch(`/api/requests?user_id=${currentUser.id}`)
       .then(r => r.json())
       .then(allReqs => {
+        updateMyRequestsBadge();
         const reqs = allReqs.filter(r => r.status !== 'paid');
         list.innerHTML = '';
         if (reqs.length === 0) {
@@ -807,9 +1071,9 @@ document.addEventListener('DOMContentLoaded', () => {
         let total = 0;
         let payIds = [];
         reqs.forEach(r => {
-          let statusText = `<span style="color: #4caf50;">AVAILABLE</span>`;
-          if (r.status === 'pending') statusText = `<span style="color: #ff9800;">PENDING</span>`;
-          if (r.status === 'paid') statusText = `<span style="color: #2196f3;">PAID</span>`;
+          let statusText = `<span style="color: #4caf50; font-weight: 600;">AVAILABLE</span>`;
+          if (r.status === 'pending') statusText = `<span style="color: #ff9800; font-weight: 600;">PENDING APPROVAL</span>`;
+          if (r.status === 'paid') statusText = `<span style="color: #2196f3; font-weight: 600;">PAID</span>`;
           
           if (r.status === 'available') {
             total += r.price;
@@ -818,18 +1082,30 @@ document.addEventListener('DOMContentLoaded', () => {
           
           let extraInfo = '';
           if (r.status === 'declined') {
-            statusText = `<span style="color: #f44336;">DECLINED</span>`;
-            extraInfo = `<div style="margin-top: 10px; font-size: 0.9rem; color: #ff9800; line-height: 1.4;">
+            statusText = `<span style="color: #f44336; font-weight: 600;">DECLINED</span>`;
+            extraInfo = `<div style="margin-top: 10px; font-size: 0.85rem; color: #ff9800; line-height: 1.4;">
               We sincerely apologize, but this exclusive piece is currently out of stock. Join our <a href="https://chat.whatsapp.com/IivXOd4K7kx1tK72XAdbZa" target="_blank" style="color: #4caf50; text-decoration: underline; font-weight: bold;">WhatsApp Community</a> to get first access to our huge collection along with exclusive rates.
             </div>`;
           }
+
+          let reqImg = r.image_url || '/images/col_daily.png';
+          try {
+            if (reqImg.startsWith('[')) {
+              const arr = JSON.parse(reqImg);
+              if (Array.isArray(arr) && arr.length > 0) reqImg = arr[0];
+            }
+          } catch(e) {}
           
           list.innerHTML += `
-            <div class="step" style="position: relative; padding: 20px; margin-bottom: 15px; border-radius: 12px; background: rgba(0,0,0,0.04); box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-              <span style="padding-right: 30px;">${r.product_name}</span>
-              <p>Size: ${r.size} <span style="float:right;">${statusText}</span></p>
-              ${extraInfo}
-              <button onclick="removeRequest(${r.id})" style="position: absolute; right: 20px; top: 20px; background: transparent; border: none; color: #ff4d4d; cursor: pointer; font-size: 1.2rem;" title="Remove Request">
+            <div class="step" style="position: relative; display: flex; gap: 15px; align-items: center; padding: 15px; margin-bottom: 15px; border-radius: 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+              <img src="${reqImg}" alt="${r.product_name}" style="width: 70px; height: 90px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); flex-shrink: 0;">
+              <div style="flex: 1; min-width: 0; text-align: left; padding-right: 28px;">
+                <span style="display: block; font-weight: 600; color: var(--gold); font-size: 1.05rem; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${r.product_name}</span>
+                <p style="margin: 0 0 5px 0; font-size: 0.9rem; opacity: 0.9;">Size: <strong>${r.size}</strong> &bull; <strong style="color: var(--gold);">₹${r.price}</strong></p>
+                <div><span style="font-size: 0.8rem; opacity: 0.7;">Status: </span>${statusText}</div>
+                ${extraInfo}
+              </div>
+              <button onclick="removeRequest(${r.id})" style="position: absolute; right: 14px; top: 14px; background: transparent; border: none; color: #ff5252; cursor: pointer; font-size: 1.15rem; transition: 0.2s;" title="Remove Request">
                 <i class="fas fa-trash-alt"></i>
               </button>
             </div>
@@ -855,6 +1131,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   const confModal = document.getElementById('orderConfirmationModal');
                   document.getElementById('confirmOrderId').innerText = "TEST-" + Math.floor(Math.random()*10000);
                   confModal.classList.add('active');
+                  updateMyRequestsBadge();
               });
             });
           };
@@ -878,6 +1155,7 @@ document.addEventListener('DOMContentLoaded', () => {
       method: 'DELETE'
     }).then(r => r.json()).then(res => {
       if (res.error) return alert(res.error);
+      updateMyRequestsBadge();
       openRequestsModal(); // Refresh modal
     }).catch(err => {
       console.error(err);
@@ -920,6 +1198,7 @@ document.addEventListener('DOMContentLoaded', () => {
               const confModal = document.getElementById('orderConfirmationModal');
               document.getElementById('confirmOrderId').innerText = verifyRes.orderId || response.razorpay_order_id;
               confModal.classList.add('active');
+              updateMyRequestsBadge();
             }
           });
         },

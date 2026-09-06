@@ -36,20 +36,31 @@
         
         <!-- Auth Screen -->
         <div id="obStepAuth" class="ob-step active">
-          <p id="obAuthTitle" class="modal-desc" style="text-align: center; margin: 0 auto 30px; font-size: 1.1rem; color: #fff;">Enter your credentials to enter the boutique.</p>
+          <div class="auth-tabs" style="display: flex; justify-content: center; gap: 10px; max-width: 450px; margin: 0 auto 20px;">
+            <button type="button" id="obTabSignup" class="auth-tab-btn" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--gold); background: var(--gold); color: #000; font-weight: bold; cursor: pointer; transition: 0.3s;">Create Account</button>
+            <button type="button" id="obTabLogin" class="auth-tab-btn" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: transparent; color: #fff; font-weight: 500; cursor: pointer; transition: 0.3s;">Sign In</button>
+          </div>
+          <p id="obAuthTitle" class="modal-desc" style="text-align: center; margin: 0 auto 25px; font-size: 1rem; color: rgba(255,255,255,0.85);">Create your exclusive client account to enter the boutique.</p>
           
           <form id="obAuthForm" class="form">
-            <div class="flex-column" id="obNameGroup" style="display: none;">
+            <div class="flex-column" id="obNameGroup">
               <label>Full Name</label>
               <div class="inputForm">
-                <input type="text" id="obNameInput" class="input" placeholder="Enter your Name">
+                <input type="text" id="obNameInput" class="input" placeholder="Enter your Name" required>
+              </div>
+            </div>
+
+            <div class="flex-column" id="obPhoneGroup">
+              <label>Mobile / Phone Number</label>
+              <div class="inputForm">
+                <input type="tel" id="obPhoneInput" class="input" placeholder="Enter 10-digit mobile number" required>
               </div>
             </div>
 
             <div class="flex-column">
-              <label>Email</label>
+              <label id="obEmailLabel">Email Address</label>
               <div class="inputForm">
-                <input type="email" id="obEmailInput" class="input" placeholder="Enter your Email" required>
+                <input type="text" id="obEmailInput" class="input" placeholder="Enter your Email" required>
               </div>
             </div>
             
@@ -60,21 +71,21 @@
               </div>
             </div>
             
-            <div class="flex-row">
+            <div class="flex-row" id="obRememberRow" style="display: none;">
               <div style="display: flex; align-items: center;">
-                <input type="checkbox" id="obRemember" style="margin-right: 5px;">
+                <input type="checkbox" id="obRemember" style="margin-right: 5px;" checked>
                 <label for="obRemember">Remember me</label>
               </div>
               <span class="span" id="obForgotPasswordToggle">Forgot password?</span>
             </div>
             
             <button type="submit" class="button-submit" id="obAuthSubmitBtn">
-              <span id="obAuthSubmitText">Login</span>
+              <span id="obAuthSubmitText">Create Account & Enter</span>
             </button>
             
             <p class="p">
-              <span id="obAuthToggleText">Don't have an account?</span> 
-              <span class="span" id="obAuthToggle">Sign up</span>
+              <span id="obAuthToggleText">Already have an account?</span> 
+              <span class="span" id="obAuthToggle">Sign in</span>
             </p>
           </form>
 
@@ -162,12 +173,12 @@
           <button class="menu-btn magnetic" onclick="document.getElementById('inquiryModal').classList.add('active')">
             <span>Consultation</span>
           </button>
-          <!-- Login button removed since login is mandatory -->
-          <button id="requestsBtn" class="menu-btn magnetic" onclick="openRequestsModal()">
+          <button id="requestsBtn" class="menu-btn magnetic" onclick="openRequestsModal()" style="position: relative;">
             <span>My Requests</span>
+            <span id="myRequestsBadge" class="nav-badge" style="display: none; position: absolute; top: -6px; right: -6px; background: #e53935; color: white; border-radius: 10px; padding: 2px 7px; font-size: 0.72rem; font-weight: 700; box-shadow: 0 0 8px rgba(229,57,53,0.6); z-index: 10;">0</span>
           </button>
           <button id="accountBtn" class="menu-btn magnetic" onclick="openAccountModal()">
-            <span><i class="fas fa-user" style="margin-right: 5px;"></i> Account</span>
+            <span><i class="fas fa-user" style="margin-right: 5px;"></i> <span id="navAccountUser">Account</span></span>
           </button>
         </div>
       </header>
@@ -405,8 +416,16 @@
             <button class="modal-back-btn magnetic" onclick="document.getElementById('productDetailsModal').classList.remove('active')"><i class="fas fa-arrow-left"></i> Back</button>
           </div>
           
-          <div class="product-details-img" style="flex: 1; border-radius: 12px; overflow: hidden;">
-            <img id="pdImg" src="" alt="Product Image" style="width: 100%; object-fit: cover;">
+          <div class="product-details-gallery" style="flex: 1; display: flex; flex-direction: column; gap: 12px; width: 100%;">
+            <div class="product-main-img-wrap" style="position: relative; border-radius: 12px; overflow: hidden; background: rgba(0,0,0,0.3); aspect-ratio: 3/4; display: flex; align-items: center; justify-content: center;">
+              <img id="pdImg" src="" alt="Product Image" style="width: 100%; height: 100%; object-fit: cover; transition: opacity 0.3s ease;">
+              <button type="button" id="pdPrevImgBtn" class="gallery-nav-btn prev" style="display: none; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.65); color: white; border: 1px solid rgba(255,255,255,0.2); width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 1rem; z-index: 5;"><i class="fas fa-chevron-left"></i></button>
+              <button type="button" id="pdNextImgBtn" class="gallery-nav-btn next" style="display: none; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.65); color: white; border: 1px solid rgba(255,255,255,0.2); width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 1rem; z-index: 5;"><i class="fas fa-chevron-right"></i></button>
+              <div id="pdImgCounter" style="display: none; position: absolute; bottom: 12px; right: 12px; background: rgba(0,0,0,0.7); color: #fff; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; border: 1px solid rgba(255,215,0,0.3);">1 / 1</div>
+            </div>
+            <div id="pdThumbnailsList" style="display: flex; gap: 8px; overflow-x: auto; padding: 4px 0;">
+              <!-- Thumbnails populated by JS -->
+            </div>
           </div>
           
           <div class="product-details-info" style="flex: 1; text-align: left; color: white;">
@@ -495,12 +514,13 @@
                 <button type="button" id="cartBtnUseLocation" style="background: transparent; border: 1px solid var(--gold); color: var(--gold); padding: 5px 10px; border-radius: 5px; cursor: pointer; align-self: flex-start; font-size: 0.8rem;">
                   <i class="fas fa-map-marker-alt"></i> Use Current Location
                 </button>
-                <input type="text" id="cartHouseNo" placeholder="House / Flat No." style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.05); color: white;">
-                <input type="text" id="cartStreet" placeholder="Street Name" style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.05); color: white;">
+                <input type="tel" id="cartPhone" placeholder="Mobile / Phone Number (10 digits)" style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.05); color: white;" required>
+                <input type="text" id="cartHouseNo" placeholder="House / Flat No." style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.05); color: white;" required>
+                <input type="text" id="cartStreet" placeholder="Street Name / Area" style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.05); color: white;" required>
                 <input type="text" id="cartLandmark" placeholder="Landmark (Optional)" style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.05); color: white;">
                 <div style="display: flex; gap: 10px;">
-                  <input type="text" id="cartCity" placeholder="City" style="flex: 1; padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.05); color: white;">
-                  <input type="text" id="cartPincode" placeholder="Pincode" style="flex: 1; padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.05); color: white;">
+                  <input type="text" id="cartCity" placeholder="City" style="flex: 1; padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.05); color: white;" required>
+                  <input type="text" id="cartPincode" placeholder="Pincode" style="flex: 1; padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.05); color: white;" required>
                 </div>
                 <button type="button" id="cartSaveAddressBtn" class="button-submit" style="padding: 8px;">Save Address</button>
               </div>
@@ -567,6 +587,8 @@
           <div style="text-align: center; margin-bottom: 20px;">
             <p id="accName" style="font-size: 1.2rem; font-weight: bold; color: var(--gold);"></p>
             <p id="accEmail" style="opacity: 0.8;"></p>
+            <p id="accPhoneDisplay" style="color: var(--gold); font-size: 0.9rem; margin-top: 4px;"></p>
+            <p id="accClientId" style="font-size: 0.8rem; opacity: 0.6; margin-top: 4px;"></p>
           </div>
           
           <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 30px; flex-wrap: wrap;">
@@ -586,6 +608,7 @@
           <button id="toggleAccAddAddressBtn" type="button" style="background: transparent; border: 1px solid var(--gold); color: var(--gold); padding: 8px 15px; border-radius: 5px; cursor: pointer; transition: 0.3s; margin-bottom: 15px; align-self: flex-start;" onclick="const f = document.getElementById('accAddAddressForm'); f.style.display = f.style.display === 'none' ? 'flex' : 'none';">+ Add New Address</button>
 
           <form id="accAddAddressForm" style="display: none; flex-direction: column; gap: 10px;">
+            <input type="tel" id="accPhone" placeholder="Mobile / Phone Number (10 digits)" style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required>
             <input type="text" id="accHouseNo" placeholder="House / Flat No." style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required>
             <input type="text" id="accStreet" placeholder="Street Name / Area" style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required>
             <input type="text" id="accLandmark" placeholder="Landmark (Optional)" style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;">
@@ -611,9 +634,24 @@
         <p>&copy; 2026 A.Z. Brand. All rights reserved.</p>
       </footer>
     
+      <!-- Luxury Notification Toast -->
+      <div id="clientNotifyToast" style="display: none; position: fixed; top: 90px; right: 20px; z-index: 99999; background: rgba(18, 18, 18, 0.95); backdrop-filter: blur(12px); border: 1px solid var(--gold); border-radius: 12px; padding: 16px 20px; box-shadow: 0 12px 35px rgba(0,0,0,0.85), 0 0 15px rgba(212,175,55,0.25); max-width: 360px; color: #fff; transition: all 0.4s ease;">
+        <div style="display: flex; align-items: flex-start; gap: 12px;">
+          <div style="background: rgba(212,175,55,0.15); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <i class="fas fa-bell" style="color: var(--gold); font-size: 1.1rem;"></i>
+          </div>
+          <div style="flex: 1;">
+            <div style="font-weight: 700; font-size: 0.95rem; color: var(--gold);" id="clientNotifyTitle">Request Approved!</div>
+            <div style="font-size: 0.85rem; margin-top: 4px; opacity: 0.9; line-height: 1.3;" id="clientNotifyBody">Your exclusive piece is now available for checkout.</div>
+            <button type="button" id="clientNotifyActionBtn" style="margin-top: 10px; background: var(--gold); color: #000; border: none; padding: 6px 14px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: 0.2s;">View & Checkout &rarr;</button>
+          </div>
+          <button type="button" onclick="document.getElementById('clientNotifyToast').style.display='none'" style="background: transparent; border: none; color: rgba(255,255,255,0.5); cursor: pointer; font-size: 1.1rem; padding: 0 4px;"><i class="fas fa-times"></i></button>
+        </div>
+      </div>
+
     </div> <!-- END OF MAIN SITE -->
 
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-    <script type="module" src="./main.js?v=8"></script>
+    <script type="module" src="./main.js?v=9"></script>
   </body>
 </html>

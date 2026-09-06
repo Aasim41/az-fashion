@@ -24,7 +24,10 @@
     <div class="admin-sidebar">
       <h2 style="color: var(--gold); margin-bottom: 30px; font-family: var(--font-serif); text-align: center;">AZ Admin</h2>
       <button class="admin-nav-btn active" data-tab="products">Products</button>
-      <button class="admin-nav-btn" data-tab="requests">Requests & Orders</button>
+      <button class="admin-nav-btn" data-tab="requests" style="position: relative; display: flex; align-items: center; justify-content: space-between;">
+        <span>Requests & Orders</span>
+        <span id="adminRequestsBadge" style="display: none; background: #e53935; color: white; border-radius: 12px; padding: 2px 7px; font-size: 0.72rem; font-weight: 700; box-shadow: 0 0 8px rgba(229,57,53,0.6);">0</span>
+      </button>
       <button class="admin-nav-btn" onclick="logoutAdmin()" style="margin-top: auto; color: #ff5252;">Logout</button>
     </div>
 
@@ -49,8 +52,9 @@
             <input type="text" id="addSizes" placeholder="Sizes (comma separated, e.g. S, M, L, Custom)" style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required>
             
             <div style="margin-top: 10px;">
-              <label style="color: var(--text-muted); display: block; margin-bottom: 5px;">Product Image</label>
-              <input type="file" id="addImage" accept="image/*" style="color: white;" required>
+              <label style="color: var(--text-muted); display: block; margin-bottom: 5px;">Product Images (Select 1 or more photos)</label>
+              <input type="file" id="addImages" accept="image/*" multiple style="color: white;" required>
+              <div id="addImagePreview" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;"></div>
             </div>
             
             <button type="submit" style="width: 200px; margin-top: 10px; padding: 10px; background: var(--gold); border: none; font-weight: bold; border-radius: 5px; cursor: pointer;">Upload Product</button>
@@ -84,6 +88,7 @@
           <table class="admin-table">
             <thead>
               <tr>
+                <th>Image</th>
                 <th>Date</th>
                 <th>Client</th>
                 <th>Product</th>
@@ -122,8 +127,9 @@
         <input type="text" id="editSizes" placeholder="Sizes (comma separated)" style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required>
         
         <div style="margin-top: 10px;">
-          <label style="color: var(--text-muted); display: block; margin-bottom: 5px;">Update Image (Leave empty to keep current)</label>
-          <input type="file" id="editImage" accept="image/*" style="color: white;">
+          <label style="color: var(--text-muted); display: block; margin-bottom: 5px;">Update Images (Select 1 or more photos, or leave empty to keep current)</label>
+          <input type="file" id="editImages" accept="image/*" multiple style="color: white;">
+          <div id="editImagePreview" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;"></div>
         </div>
         
         <button type="submit" style="width: 100%; padding: 10px; background: var(--gold); border: none; font-weight: bold; border-radius: 5px; cursor: pointer;">Save Changes</button>
