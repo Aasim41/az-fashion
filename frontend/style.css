@@ -524,10 +524,17 @@ body.loading {
 /* Glassmorphic Modal */
 .glass-modal {
   position: fixed; top:0; left:0; width:100vw; height:100vh;
-  background: rgba(0,0,0,0.8); backdrop-filter: blur(20px); z-index: 10000;
-  display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.5s ease;
+  background: rgba(0,0,0,0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  z-index: 500000;
+  display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.4s ease;
 }
 .glass-modal.active { opacity: 1; pointer-events: all; }
+
+/* Product Details & Order Confirmation MUST OPEN ON TOP OF COLLECTION MODAL */
+#productDetailsModal,
+#orderConfirmationModal {
+  z-index: 2000000 !important;
+}
 .glass-modal-content {
   background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 60px;
   width: 90%; max-width: 600px; border-radius: 20px; position: relative;
@@ -1527,6 +1534,9 @@ hr {
   }
 
   /* Product Details Modal */
+  #productDetailsModal {
+    z-index: 2000000 !important;
+  }
   .product-details-modal-content {
     flex-direction: column !important;
     padding: 25px 16px 30px !important;
