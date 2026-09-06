@@ -1,32 +1,104 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const db = require('./db');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Razorpay = require('razorpay');
+const multer = require('multer');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const JWT_SECRET = process.env.JWT_SECRET || 'az_luxury_fashion_jwt_production_secret_2026';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 
+// 1. Security Headers via Helmet
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false
+}));
+
+// 2. CORS and Body Parsing
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 
-const multer = require('multer');
-const path = require('path');
+// 3. Brute Force & Rate Limiting Protection
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30, // 30 requests per IP
+  message: { error: 'Too many authentication attempts. Please try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 600, // 600 requests per 15 min
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/', generalLimiter);
+app.use('/api/auth/', authLimiter);
+app.use('/api/admin/login', authLimiter);
+
+// 4. Secure File Upload with Multer (Type and Size Validation)
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, path.join(__dirname, '../frontend/public/images/'))
   },
   filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
-    cb(null, 'prod_' + uniqueSuffix + path.extname(file.originalname))
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, 'prod_' + uniqueSuffix + ext);
   }
 });
-const upload = multer({ storage: storage });
+const fileFilter = (req, file, cb) => {
+  const allowedExts = ['.jpg', '.jpeg', '.png', '.webp'];
+  const ext = path.extname(file.originalname).toLowerCase();
+  const allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+  if (allowedExts.includes(ext) && allowedMimes.includes(file.mimetype)) {
+    return cb(null, true);
+  }
+  cb(new Error('Security Error: Only image files (.jpg, .jpeg, .png, .webp) are allowed.'));
+};
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB max file size
+  fileFilter: fileFilter
+});
 
-// Removed Nodemailer Configuration
+// 5. Admin Authentication Middleware
+const authenticateAdmin = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized: Admin authentication token required' });
+  }
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden: Admin access only' });
+    }
+    req.admin = decoded;
+    next();
+  } catch (err) {
+    return res.status(403).json({ error: 'Forbidden: Invalid or expired admin session' });
+  }
+};
+
+// Admin Login Endpoint
+app.post('/api/admin/login', (req, res) => {
+  const { password } = req.body;
+  if (!password) return res.status(400).json({ error: 'Password required' });
+  if (password !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Invalid admin credentials' });
+  }
+  const adminToken = jwt.sign({ role: 'admin' }, JWT_SECRET, { expiresIn: '24h' });
+  res.json({ message: 'Authentication successful', token: adminToken });
+});
 
 // --- Setup Razorpay ---
 const razorpay = new Razorpay({
@@ -67,7 +139,7 @@ app.get('/api/products', (req, res) => {
 });
 
   // Admin: Add Product
-  app.post('/api/admin/products', upload.single('image'), (req, res) => {
+  app.post('/api/admin/products', authenticateAdmin, upload.single('image'), (req, res) => {
     const { name, description, price, collection_id, sizes, category } = req.body;
     const image_url = req.file ? '/images/' + req.file.filename : '';
     
@@ -88,7 +160,7 @@ app.get('/api/products', (req, res) => {
   });
 
   // Admin: Delete Product
-  app.delete('/api/admin/products/:id', (req, res) => {
+  app.delete('/api/admin/products/:id', authenticateAdmin, (req, res) => {
     db.run('DELETE FROM products WHERE id = ?', [req.params.id], function(err) {
       if (err) return res.status(500).json({ error: err.message });
       res.json({ message: "Product deleted successfully" });
@@ -96,7 +168,7 @@ app.get('/api/products', (req, res) => {
   });
 
   // Admin: Update Product
-  app.put('/api/admin/products/:id', upload.single('image'), (req, res) => {
+  app.put('/api/admin/products/:id', authenticateAdmin, upload.single('image'), (req, res) => {
     const { name, description, price, collection_id, sizes } = req.body;
     let sizesArr = [];
     if (sizes) {
@@ -155,7 +227,7 @@ app.post('/api/auth/register', async (req, res) => {
         return res.status(500).json({ error: err.message });
       }
       
-      const token = jwt.sign({ id: this.lastID, email }, process.env.JWT_SECRET || 'fallback_secret', { expiresIn: '7d' });
+      const token = jwt.sign({ id: this.lastID, email }, JWT_SECRET, { expiresIn: '7d' });
       res.status(201).json({ message: 'Account created successfully', user: { id: this.lastID, email }, token });
     });
   } catch (err) {
@@ -174,7 +246,7 @@ app.post('/api/auth/login', (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) return res.status(401).json({ error: 'Incorrect password' });
     
-    const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET || 'fallback_secret', { expiresIn: '7d' });
+    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
     res.json({ message: 'Login successful', user: { id: user.id, email: user.email, name: user.name, address: user.address }, token });
   });
 });
@@ -254,7 +326,7 @@ app.get('/api/requests', (req, res) => {
 });
 
   // 6. Admin: Get All Requests
-  app.get('/api/admin/requests', (req, res) => {
+  app.get('/api/admin/requests', authenticateAdmin, (req, res) => {
     const query = `
       SELECT r.*, p.name as product_name, p.price, p.image_url, u.name as user_name, u.email as user_email
       FROM requests r 
@@ -269,7 +341,7 @@ app.get('/api/requests', (req, res) => {
   });
 
   // 6.1 Admin: Approve Request
-  app.post('/api/requests/:id/approve', (req, res) => {
+  app.post('/api/requests/:id/approve', authenticateAdmin, (req, res) => {
     const requestId = req.params.id;
     db.run('UPDATE requests SET status = ? WHERE id = ?', ['available', requestId], function (err) {
       if (err) return res.status(500).json({ error: err.message });
@@ -278,7 +350,7 @@ app.get('/api/requests', (req, res) => {
   });
   
   // 6.2 Admin: Decline Request
-  app.post('/api/requests/:id/decline', (req, res) => {
+  app.post('/api/requests/:id/decline', authenticateAdmin, (req, res) => {
     const requestId = req.params.id;
     db.run('UPDATE requests SET status = ? WHERE id = ?', ['declined', requestId], function (err) {
       if (err) return res.status(500).json({ error: err.message });
@@ -354,6 +426,19 @@ app.post('/api/products/:id/reviews', (req, res) => {
       res.json({ message: "Review added successfully", reviews });
     });
   });
+});
+
+// Centralized error handling (Multer file limits, MIME types, and server errors)
+app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'File too large. Maximum allowed size is 5MB.' });
+    }
+    return res.status(400).json({ error: `File upload error: ${err.message}` });
+  } else if (err) {
+    return res.status(400).json({ error: err.message || 'An unexpected error occurred' });
+  }
+  next();
 });
 
 // --- Production Deployment: Serve Frontend ---
