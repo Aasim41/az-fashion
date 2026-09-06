@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AZ Fashion | Redefining High-End Ethnic Wear</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Montserrat:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="./style.css">
+    <!-- Razorpay SDK -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  </head>
+  <body class="loading">
+
+    <!-- Preloader -->
+    <div id="loader">
+      <div class="loader-bg"></div>
+      <div class="loader-bg"></div>
+      <div class="loader-bg"></div>
+      <h1 class="loader-title magnetic">AZ Fashion</h1>
+      <div class="progress-bar"><div class="progress"></div></div>
+    </div>
+
+    <!-- ONBOARDING FLOW -->
+    <div id="onboardingFlow" class="onboarding-flow active">
+      <div class="onboarding-bg"></div>
+      <div class="onboarding-content">
+        <img src="/images/logo.png" alt="AZ Fashion Logo" style="height:80px; margin-bottom: 20px;">
+        <h1 class="hero-title" style="font-size: 2.5rem; margin-bottom: 30px;">Welcome to AZ Fashion</h1>
+        
+        <!-- Auth Screen -->
+        <div id="obStepAuth" class="ob-step active">
+          <p id="obAuthTitle" class="modal-desc" style="text-align: center; margin: 0 auto 30px; font-size: 1.1rem; color: #fff;">Enter your credentials to enter the boutique.</p>
+          
+          <form id="obAuthForm" class="form">
+            <div class="flex-column" id="obNameGroup" style="display: none;">
+              <label>Full Name</label>
+              <div class="inputForm">
+                <input type="text" id="obNameInput" class="input" placeholder="Enter your Name">
+              </div>
+            </div>
+
+            <div class="flex-column">
+              <label>Email</label>
+              <div class="inputForm">
+                <input type="email" id="obEmailInput" class="input" placeholder="Enter your Email" required>
+              </div>
+            </div>
+            
+            <div class="flex-column">
+              <label>Password</label>
+              <div class="inputForm">
+                <input type="password" id="obPasswordInput" class="input" placeholder="Enter your Password" required>
+              </div>
+            </div>
+            
+            <div class="flex-row">
+              <div style="display: flex; align-items: center;">
+                <input type="checkbox" id="obRemember" style="margin-right: 5px;">
+                <label for="obRemember">Remember me</label>
+              </div>
+              <span class="span" id="obForgotPasswordToggle">Forgot password?</span>
+            </div>
+            
+            <button type="submit" class="button-submit" id="obAuthSubmitBtn">
+              <span id="obAuthSubmitText">Login</span>
+            </button>
+            
+            <p class="p">
+              <span id="obAuthToggleText">Don't have an account?</span> 
+              <span class="span" id="obAuthToggle">Sign up</span>
+            </p>
+          </form>
+
+          <!-- Forgot Password Screen (Hidden initially) -->
+          <form id="obForgotForm" class="form" style="display: none;">
+            <div class="flex-column">
+              <label>Reset Password</label>
+              <div class="inputForm">
+                <input type="email" id="obForgotEmail" class="input" placeholder="Enter your Email" required>
+              </div>
+            </div>
+            <div class="flex-column">
+              <label>New Password</label>
+              <div class="inputForm">
+                <input type="password" id="obForgotNewPassword" class="input" placeholder="Min 8 chars, 1 Capital, 1 Special, 1 Num" required>
+              </div>
+            </div>
+            <button type="submit" class="button-submit">Reset & Login</button>
+            <p class="p">
+              <span class="span" id="obForgotBack">Back to Login</span>
+            </p>
+          </form>
+        </div>
+
+
+
+        <!-- Step 4: Terms and Conditions -->
+        <div id="obStepTC" class="ob-step">
+          <p class="modal-desc" style="text-align: center; margin: 0 auto 30px;">Please agree to our terms before entering.</p>
+          <div class="form" style="max-width: 500px; margin: 0 auto; text-align: left; padding: 25px; background: rgba(255,255,255,0.05); border-radius: 12px; border: 1px solid rgba(255,215,0,0.2);">
+            <h3 style="color: var(--gold); margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px;">Terms & Conditions</h3>
+            <p style="margin-bottom: 15px; font-size: 0.9rem; line-height: 1.6; color: rgba(255,255,255,0.9);">An <strong>unboxing video is strictly mandatory</strong> in all circumstances. Upon receipt of your order, an unboxing video must be recorded and submitted to official WhatsApp channels.</p>
+            <p style="margin-bottom: 15px; font-size: 0.9rem; line-height: 1.6; color: rgba(255,255,255,0.9);">Products shall <strong>only be eligible for replacement</strong> in the event of a verified manufacturing defect or damage sustained during transit, as evidenced by the aforementioned unboxing video.</p>
+            <p style="color: #ff4d4d; font-weight: bold; font-size: 0.9rem; margin-bottom: 25px; line-height: 1.6;">Please note that under no circumstances will refunds be issued. Any issues reported without accompanying video evidence will not be entertained.</p>
+            
+            <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; color: #fff; font-size: 0.85rem; margin-bottom: 20px;">
+              <input type="checkbox" id="obTcCheckbox" style="margin-top: 3px;">
+              <span>I have read and agree to these terms.</span>
+            </label>
+            
+            <button id="obTcSubmitBtn" class="button-submit" style="width: 100%;">Enter Boutique</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- MAIN SITE (Hidden initially) -->
+    <div id="mainSite" style="display: none;">
+      <!-- Announcement Bar -->
+      <div class="announcement-bar">
+        <div class="announcement-text">
+          <span>Festive Season Special: Free Shipping on Orders Over ₹5000</span>
+          <span>&bull;</span>
+          <span>10% Off Your First Purchase with code AZ10</span>
+          <span>&bull;</span>
+          <span>Festive Season Special: Free Shipping on Orders Over ₹5000</span>
+          <span>&bull;</span>
+          <span>10% Off Your First Purchase with code AZ10</span>
+        </div>
+      </div>
+
+      <!-- Header Navigation -->
+      <header class="header">
+        <a href="#" class="logo magnetic" style="display:flex; align-items:center; gap:15px;">
+          <img src="/images/logo.png" alt="AZ Fashion Logo" style="height:50px;">
+          <span>AZ FASHION</span>
+        </a>
+        <div class="glass-radio-group">
+          <input type="radio" name="glass-nav" id="glass-opt1" value="collections" checked>
+          <label for="glass-opt1">Collections</label>
+          
+          <input type="radio" name="glass-nav" id="glass-opt2" value="lookbook">
+          <label for="glass-opt2">Lookbook</label>
+          
+          <input type="radio" name="glass-nav" id="glass-opt3" value="heritage">
+          <label for="glass-opt3">Heritage</label>
+
+          <input type="radio" name="glass-nav" id="glass-opt4" value="contact">
+          <label for="glass-opt4">About Us</label>
+          
+          <span class="glass-glider"></span>
+        </div>
+        <div class="header-actions" style="display:flex; gap:10px;">
+          <button class="menu-btn magnetic" onclick="document.getElementById('inquiryModal').classList.add('active')">
+            <span>Consultation</span>
+          </button>
+          <!-- Login button removed since login is mandatory -->
+          <button id="requestsBtn" class="menu-btn magnetic" onclick="openRequestsModal()">
+            <span>My Requests</span>
+          </button>
+          <button id="accountBtn" class="menu-btn magnetic" onclick="openAccountModal()">
+            <span><i class="fas fa-user" style="margin-right: 5px;"></i> Account</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Hero Section -->
+      <section class="hero" id="home">
+        <div class="hero-slideshow">
+          <div class="hero-slide active">
+            <img src="/images/hero_1.jpg" class="hero-bg-img" alt="Luxury Indian Wear 1">
+          </div>
+          <div class="hero-slide">
+            <img src="/images/hero_2.jpg" class="hero-bg-img" alt="Luxury Indian Wear 2">
+          </div>
+          <div class="hero-slide">
+            <img src="/images/hero_3.jpg" class="hero-bg-img" alt="Luxury Indian Wear 3">
+          </div>
+          <div class="hero-slide">
+            <img src="/images/hero_4.jpg" class="hero-bg-img" alt="Luxury Indian Wear 4">
+          </div>
+          <div class="hero-slide">
+            <img src="/images/hero_5.jpg" class="hero-bg-img" alt="Luxury Indian Wear 5">
+          </div>
+          <div class="hero-overlay"></div>
+        </div>
+
+        <div class="hero-content">
+          <h1 class="hero-title">
+            <span class="line"><span class="word">Modern</span></span>
+            <span class="line"><span class="word" style="font-style:italic; color:var(--gold);">Heritage</span></span>
+          </h1>
+          <p class="hero-subtitle">A new paradigm of luxury ethnic fashion, meticulously crafted for the global connoisseur.</p>
+          <div class="scroll-indicator">
+            <span>Scroll to Explore</span>
+            <div class="line"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Infinite Marquee -->
+      <div class="marquee-wrapper">
+        <div class="marquee">
+          <span>Handcrafted Elegance ✧ Pure Silks ✧ Bespoke Tailoring ✧ Global Delivery ✧ Royal Heritage ✧</span>
+          <span>Handcrafted Elegance ✧ Pure Silks ✧ Bespoke Tailoring ✧ Global Delivery ✧ Royal Heritage ✧</span>
+        </div>
+      </div>
+
+      <!-- Dynamic Collections (Sticky Horizontal Scroll) -->
+      <section id="collections" class="collections-section scrollspy-section">
+        <div class="collections-sticky-wrapper">
+          <div class="section-title-huge">Collections</div>
+          <div class="collections-container">
+            <div class="collections-track" id="collectionsGrid">
+              <!-- Populated by JS, styled as 3D Tilt Cards -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Lookbook -->
+      <section id="lookbook" class="lookbook-section scrollspy-section">
+        <h2 class="section-heading reveal">The Lookbook</h2>
+        <div class="lookbook-slider-container reveal">
+          <div class="lookbook-slider-track">
+            <div class="slider-item" style="margin-top: 80px;"><img src="/images/lookbook_2.jpg" alt="Lookbook 2"></div>
+            <div class="slider-item"><img src="/images/lookbook_4.jpg" alt="Lookbook 4"></div>
+            <div class="slider-item" style="margin-top: 80px;"><img src="/images/lookbook_5.jpg" alt="Lookbook 5"></div>
+            <!-- Duplicate for smooth loop -->
+            <div class="slider-item" style="margin-top: 80px;"><img src="/images/lookbook_2.jpg" alt="Lookbook 2"></div>
+            <div class="slider-item"><img src="/images/lookbook_4.jpg" alt="Lookbook 4"></div>
+            <div class="slider-item" style="margin-top: 80px;"><img src="/images/lookbook_5.jpg" alt="Lookbook 5"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Split Heritage Section -->
+      <section id="heritage" class="heritage-section scrollspy-section">
+        <div class="heritage-content reveal">
+          <h2 class="section-heading" style="text-align:left; margin-bottom: 20px;">Artisanal Mastery</h2>
+          <p class="heritage-text">Since 2021, AZ Fashion has redefined the boundaries of traditional attire. We employ techniques passed down through generations, ensuring every thread weaves a story of timeless perfection and unparalleled luxury.</p>
+          
+          <div class="heritage-stats">
+            <div class="stat-item">
+              <span class="stat-num">5+</span>
+              <span class="stat-label">Years of Excellence</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-num">10k+</span>
+              <span class="stat-label">Happy Customers</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-num">5k+</span>
+              <span class="stat-label">Exclusive Stock</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-num">4.5★</span>
+              <span class="stat-label">Average Rating</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="heritage-image reveal">
+          <div class="parallax-img">
+            <img src="/images/boutique_heritage.png" alt="Boutique Shop">
+          </div>
+        </div>
+      </section>
+
+      <!-- Contact Form Section -->
+      <section id="contact" class="contact-section scrollspy-section">
+        <div class="contact-container reveal">
+          <h2 class="section-heading">Connect With Us</h2>
+          <form class="inquiry-form inline-form">
+            <div class="form-row">
+              <div class="input-group">
+                <input type="text" name="name" required>
+                <label>Full Name</label>
+                <div class="border-anim"></div>
+              </div>
+              <div class="input-group">
+                <input type="email" name="email" required>
+                <label>Email Address</label>
+                <div class="border-anim"></div>
+              </div>
+            </div>
+            <div class="input-group">
+              <textarea name="message" rows="4" required></textarea>
+              <label>Your Vision or Inquiry</label>
+              <div class="border-anim"></div>
+            </div>
+            <button type="submit" class="btn-solid magnetic"><span>Submit Request</span></button>
+          </form>
+        </div>
+      </section>
+
+      <!-- Massive Interactive Footer -->
+      <footer class="footer">
+        <div class="footer-bg-anim"></div>
+        <div class="footer-content">
+          <div class="footer-huge-title magnetic" style="display:flex; flex-direction:column; align-items:center; gap:20px; font-size: clamp(3rem, 8vw, 8rem);">
+            <img src="/images/logo.png" alt="AZ Fashion Logo" style="height:120px;">
+            <span>AZ FASHION</span>
+          </div>
+          <div class="footer-grid">
+            <div class="footer-col">
+              <h4>Inquiries</h4>
+              <a href="tel:+918210634488" class="magnetic" style="display: block; margin-bottom: 10px;">Call: +91 82106 34488</a>
+              <a href="https://wa.me/+918210634488" target="_blank" class="magnetic" style="display: flex; align-items: center; gap: 8px; color: var(--gold);">
+                <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51h-.57c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                </svg>
+                Chat with Owner
+              </a>
+            </div>
+            <div class="footer-col" style="visibility: hidden;">
+              <!-- Placeholder for spacing -->
+            </div>
+            <div class="footer-col">
+              <h4>Socials</h4>
+              <div class="social-icons">
+                <a href="https://youtube.com/@shopifyaz?si=UIeN1vF_dSsULbEE" target="_blank" class="magnetic social-icon">
+                  <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
+                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                  </svg>
+                </a>
+                <a href="https://www.instagram.com/shopify_az?utm_source=qr&igsh=MWQ1ejQ0YWZldzU3dQ==" target="_blank" class="magnetic social-icon">
+                  <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
+                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+                  </svg>
+                </a>
+                <a href="https://chat.whatsapp.com/IivXOd4K7kx1tK72XAdbZa" target="_blank" class="magnetic social-icon">
+                  <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51h-.57c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                  </svg>
+                </a>
+              </div>
+              <div style="margin-top: 15px; font-family: var(--font-sans); font-size: 0.9rem; color: rgba(255,255,255,0.7); max-width: 250px; line-height: 1.4;">
+                Join our <a href="https://chat.whatsapp.com/IivXOd4K7kx1tK72XAdbZa" target="_blank" style="color: var(--gold); text-decoration: none; font-weight: 600;">WhatsApp Community</a>. It's our most active channel—most updates and new products are shared here first!
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <p>&copy; 2026 AZ Fashion. Designed for Excellence.</p>
+        </div>
+      </footer>
+
+      <!-- Glassmorphic Inquiry Modal (Keep for header button) -->
+      <div id="inquiryModal" class="glass-modal">
+        <div class="glass-modal-content">
+          <button class="close-btn magnetic" onclick="document.getElementById('inquiryModal').classList.remove('active')"><i class="fas fa-arrow-left"></i> Back</button>
+          <h2 class="modal-heading">Private Consultation</h2>
+          <p class="modal-desc">Book an exclusive appointment with our master tailors.</p>
+          <form id="inquiryForm" class="inquiry-form">
+            <div class="input-group">
+              <input type="text" name="name" required>
+              <label>Full Name</label>
+              <div class="border-anim"></div>
+            </div>
+            <div class="input-group">
+              <input type="email" name="email" required>
+              <label>Email Address</label>
+              <div class="border-anim"></div>
+            </div>
+            <div class="input-group">
+              <textarea name="message" rows="3" required></textarea>
+              <label>Your Vision</label>
+              <div class="border-anim"></div>
+            </div>
+            <button type="submit" class="btn-solid magnetic"><span>Submit Request</span></button>
+          </form>
+        </div>
+      </div>
+
+      <div id="toast" class="toast"></div>
+
+      <!-- Collection Modal -->
+      <div id="collectionModal" class="collection-modal">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+          <button class="modal-close magnetic"><i class="fas fa-arrow-left"></i> Back</button>
+          <h2 id="modalCollectionName" class="modal-title">Collection</h2>
+          <p id="modalCollectionDesc" class="modal-desc"></p>
+          <div id="modalProductsGrid" class="modal-products-grid">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Product Details Modal -->
+      <div id="productDetailsModal" class="glass-modal">
+        <div class="glass-modal-content" style="max-width: 800px; width: 90%; display: flex; flex-direction: row; gap: 30px; padding: 40px; align-items: flex-start;">
+          <button class="close-btn magnetic" onclick="document.getElementById('productDetailsModal').classList.remove('active')"><i class="fas fa-arrow-left"></i> Back</button>
+          
+          <div class="product-details-img" style="flex: 1; border-radius: 12px; overflow: hidden;">
+            <img id="pdImg" src="" alt="Product Image" style="width: 100%; object-fit: cover;">
+          </div>
+          
+          <div class="product-details-info" style="flex: 1; text-align: left; color: white;">
+            <h2 id="pdName" style="font-family: var(--font-serif); font-size: 2rem; color: var(--gold); margin-bottom: 10px;"></h2>
+            <p id="pdDesc" style="font-family: var(--font-sans); font-size: 1rem; color: rgba(255,255,255,0.8); margin-bottom: 20px;"></p>
+            <div id="pdPrice" style="font-size: 1.5rem; font-weight: 600; margin-bottom: 20px;"></div>
+            
+            <div style="margin-bottom: 20px;">
+              <h4 style="margin-bottom: 10px; color: var(--gold);">Select Size</h4>
+              <div id="pdSizes" style="display: flex; gap: 10px; flex-wrap: wrap;"></div>
+            </div>
+                        <!-- Removed Color Selection as products have only one color -->
+            
+            <button id="pdRequestBtn" class="btn-solid magnetic" style="width: 100%;"><span>Request Availability</span></button>
+            <p style="text-align: center; font-size: 0.8rem; color: var(--text-muted); margin-top: 10px;">
+              * Your request will be verified within 24 hours.
+            </p>
+            
+            <div id="pdReviews" style="margin-top: 40px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h4 style="color: var(--gold); margin: 0;">Client Reviews</h4>
+                <button id="addReviewBtn" style="background: transparent; border: 1px solid var(--gold); color: var(--gold); padding: 5px 15px; border-radius: 5px; cursor: pointer; transition: 0.3s;">+ Add Review</button>
+              </div>
+              
+              <div id="addReviewForm" style="display: none; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <input type="text" id="reviewName" placeholder="Your Name" style="width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;">
+                <select id="reviewRating" style="width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;">
+                  <option value="" disabled selected>Select Rating</option>
+                  <option value="5">5 - Excellent</option>
+                  <option value="4">4 - Very Good</option>
+                  <option value="3">3 - Average</option>
+                  <option value="2">2 - Poor</option>
+                  <option value="1">1 - Terrible</option>
+                </select>
+                <textarea id="reviewComment" placeholder="Your Review..." style="width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white; resize: vertical; min-height: 80px;"></textarea>
+                <button id="submitReviewBtn" style="background: var(--gold); color: #000; border: none; padding: 10px; width: 100%; border-radius: 5px; font-weight: bold; cursor: pointer;">Submit Review</button>
+              </div>
+
+              <div id="pdReviewsList" style="display: flex; flex-direction: column; gap: 15px;">
+                <!-- Reviews populated by JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Requests / Checkout Cart Modal -->
+      <div id="requestsModal" class="glass-modal" style="padding: 20px 0; overflow-y: auto;">
+        <div style="position: relative; max-width: 600px; width: 90%; margin: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100%;">
+          <button class="close-btn magnetic" onclick="document.getElementById('requestsModal').classList.remove('active')"><i class="fas fa-arrow-left"></i> Back</button>
+          
+          <div class="card container" style="margin-top: 40px; margin-bottom: 40px;">
+            <div class="title">Cart / Checkout</div>
+            <hr>
+            
+            <div class="cart">
+              <div class="steps" id="checkoutItemsList" style="min-height: 10vh; max-height: 40vh; overflow-y: auto;">
+                <!-- Populated by JS -->
+                <div class="step">
+                  <span>Your cart is empty</span>
+                  <p>Request an item to see it here.</p>
+                </div>
+              </div>
+            </div>
+            <hr>
+            
+            <div class="promo">
+              <form onsubmit="event.preventDefault(); alert('Promo code applied!');">
+                <input class="input_field" type="text" placeholder="Promo code">
+                <button type="submit">Apply</button>
+              </form>
+            </div>
+            <hr>
+            
+            <!-- Cart Address Section -->
+            <div class="cart-address" style="padding: 15px 0; text-align: left;">
+              <h4 style="color: var(--gold); margin-bottom: 10px;">Shipping Address</h4>
+              <select id="cartAddressSelect" style="width: 100%; padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white; margin-bottom: 15px;">
+                <option value="" disabled selected>Select a saved address</option>
+                <option value="new">+ Add New Address</option>
+              </select>
+              
+              <div id="cartNewAddressForm" style="display: none; flex-direction: column; gap: 10px; margin-bottom: 15px;">
+                <button type="button" id="cartBtnUseLocation" style="background: transparent; border: 1px solid var(--gold); color: var(--gold); padding: 5px 10px; border-radius: 5px; cursor: pointer; align-self: flex-start; font-size: 0.8rem;">
+                  <i class="fas fa-map-marker-alt"></i> Use Current Location
+                </button>
+                <input type="text" id="cartHouseNo" placeholder="House / Flat No." style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.05); color: white;">
+                <input type="text" id="cartStreet" placeholder="Street Name" style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.05); color: white;">
+                <input type="text" id="cartLandmark" placeholder="Landmark (Optional)" style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.05); color: white;">
+                <div style="display: flex; gap: 10px;">
+                  <input type="text" id="cartCity" placeholder="City" style="flex: 1; padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.05); color: white;">
+                  <input type="text" id="cartPincode" placeholder="Pincode" style="flex: 1; padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.05); color: white;">
+                </div>
+                <button type="button" id="cartSaveAddressBtn" class="button-submit" style="padding: 8px;">Save Address</button>
+              </div>
+            </div>
+            <hr>
+            
+            <div class="payments">
+              <div class="details" id="checkoutDetails">
+                <span>Subtotal</span>
+                <span>₹0</span>
+                <span>Shipping</span>
+                <span>Free</span>
+                <span>Total</span>
+                <span>₹0</span>
+              </div>
+            </div>
+            
+            <div class="checkout">
+              <div class="footer">
+                <div class="price" id="checkoutTotalPrice">₹0</div>
+                <div style="display: flex; gap: 10px;">
+                  <button class="checkout-btn" id="testPayBtn" style="background: rgba(255,255,255,0.1); color: #fff;">Test Pay</button>
+                  <button class="checkout-btn" id="checkoutPayBtn">Checkout</button>
+                </div>
+              </div>
+            </div>
+            
+          </div>
+        </div>
+      </div>
+
+      <!-- Order Confirmation Modal -->
+      <div id="orderConfirmationModal" class="glass-modal">
+        <div class="glass-modal-content" style="max-width: 500px; width: 90%; text-align: center; padding: 50px;">
+          <button class="close-btn magnetic" onclick="document.getElementById('orderConfirmationModal').classList.remove('active')"><i class="fas fa-arrow-left"></i> Back</button>
+          
+          <div style="margin-bottom: 20px; color: var(--gold); font-size: 4rem;">
+            <i class="fas fa-check-circle"></i>
+          </div>
+          <h2 class="modal-heading" style="color: var(--gold);">Order Confirmed!</h2>
+          <p class="modal-desc" style="font-size: 1.1rem; margin-top: 15px;">
+            Thank you for your purchase. Your payment was successful and your beautiful piece is being prepared for dispatch.
+          </p>
+          <div style="margin-top: 30px; font-weight: 600;">
+            <p>Order ID: <span id="confirmOrderId" style="color: var(--gold);"></span></p>
+          </div>
+          <div style="margin-top: 25px; padding: 15px; background: rgba(255,152,0,0.1); border-left: 4px solid #ff9800; text-align: left; font-size: 0.9rem; line-height: 1.5; border-radius: 4px;">
+            <strong style="color: #ff9800;">Important Reminder:</strong> Please remember to record an unboxing video upon receiving your order and send it to our <a href="https://wa.me/+918210634488" target="_blank" style="color: var(--gold); text-decoration: underline;">WhatsApp</a>. This is <strong>mandatory</strong> in every case.
+          </div>
+          <button class="button-submit" style="margin-top: 40px; width: 200px;" onclick="document.getElementById('orderConfirmationModal').classList.remove('active')">Continue Shopping</button>
+        </div>
+      </div>
+
+      <!-- Account Dashboard Modal -->
+      <div id="accountModal" class="glass-modal">
+        <div class="glass-modal-content" style="max-width: 600px; width: 90%;">
+          <button class="close-btn magnetic" onclick="document.getElementById('accountModal').classList.remove('active')"><i class="fas fa-arrow-left"></i> Back</button>
+          
+          <h2 class="modal-heading">My Account</h2>
+          <div style="text-align: center; margin-bottom: 20px;">
+            <p id="accName" style="font-size: 1.2rem; font-weight: bold; color: var(--gold);"></p>
+            <p id="accEmail" style="opacity: 0.8;"></p>
+          </div>
+          
+          <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 30px; flex-wrap: wrap;">
+            <button class="button-submit" style="width: auto; padding: 10px 20px;" onclick="document.getElementById('accountModal').classList.remove('active'); openRequestsModal();">View Cart</button>
+            <button class="button-submit" style="width: auto; padding: 10px 20px; background: #e53935; border-color: #e53935;" onclick="logoutUser()">Logout</button>
+            <button class="button-submit" style="width: auto; padding: 10px 20px; background: #8b0000; border-color: #8b0000;" onclick="deleteAccount()">Delete Account</button>
+          </div>
+
+          <hr style="border-color: rgba(255,255,255,0.1); margin: 20px 0;">
+
+          <!-- Saved Addresses -->
+          <h3 style="color: var(--gold); margin-bottom: 15px;">Saved Addresses</h3>
+          <div id="accAddressesList" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; max-height: 150px; overflow-y: auto;">
+            <!-- Rendered by JS -->
+          </div>
+          
+          <button id="toggleAccAddAddressBtn" type="button" style="background: transparent; border: 1px solid var(--gold); color: var(--gold); padding: 8px 15px; border-radius: 5px; cursor: pointer; transition: 0.3s; margin-bottom: 15px; align-self: flex-start;" onclick="const f = document.getElementById('accAddAddressForm'); f.style.display = f.style.display === 'none' ? 'flex' : 'none';">+ Add New Address</button>
+
+          <form id="accAddAddressForm" style="display: none; flex-direction: column; gap: 10px;">
+            <input type="text" id="accHouseNo" placeholder="House / Flat No." style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required>
+            <input type="text" id="accStreet" placeholder="Street Name / Area" style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required>
+            <input type="text" id="accLandmark" placeholder="Landmark (Optional)" style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;">
+            <div style="display: flex; gap: 10px;">
+              <input type="text" id="accCity" placeholder="City" style="flex: 1; padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required>
+              <input type="text" id="accPincode" placeholder="Pincode" style="flex: 1; padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required>
+            </div>
+            <button type="submit" class="button-submit" style="width: 100%; padding: 10px 20px;">Save New Address</button>
+          </form>
+
+          <hr style="border-color: rgba(255,255,255,0.1); margin: 20px 0;">
+
+          <!-- My Orders -->
+          <h3 style="color: var(--gold); margin-bottom: 15px;">My Orders</h3>
+          <div id="accOrdersList" style="display: flex; flex-direction: column; gap: 10px; max-height: 200px; overflow-y: auto;">
+            <!-- Rendered by JS -->
+          </div>
+          
+        </div>
+      </div>
+      <!-- Footer -->
+      <footer style="margin-top: 50px; border-top: 1px solid rgba(255,255,255,0.1); padding: 30px; text-align: center; color: rgba(255,255,255,0.5);">
+        <p>&copy; 2026 A.Z. Brand. All rights reserved.</p>
+      </footer>
+    
+    </div> <!-- END OF MAIN SITE -->
+
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script type="module" src="./main.js?v=8"></script>
+  </body>
+</html>

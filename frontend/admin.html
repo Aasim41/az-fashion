@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AZ Fashion | Admin Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="admin.css">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+  
+  <div id="adminLogin" class="admin-login-container">
+    <div class="card container" style="max-width: 400px; padding: 40px; border-radius: 19px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); margin: 100px auto;">
+      <h2 style="color: var(--gold); text-align: center; margin-bottom: 20px; font-family: var(--font-serif);">Admin Access</h2>
+      <form id="adminLoginForm">
+        <input type="password" id="adminPass" placeholder="Admin Password" style="margin-bottom: 20px; width: 100%; padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required>
+        <button type="submit" style="width: 100%; padding: 10px; background: var(--gold); border: none; font-weight: bold; border-radius: 5px; cursor: pointer;">Enter Dashboard</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="adminDashboard" style="display: none;">
+    <div class="admin-sidebar">
+      <h2 style="color: var(--gold); margin-bottom: 30px; font-family: var(--font-serif); text-align: center;">AZ Admin</h2>
+      <button class="admin-nav-btn active" data-tab="products">Products</button>
+      <button class="admin-nav-btn" data-tab="requests">Requests & Orders</button>
+      <button class="admin-nav-btn" onclick="location.reload()" style="margin-top: auto; color: #ff5252;">Logout</button>
+    </div>
+
+    <div class="admin-content">
+      
+      <!-- Products Tab -->
+      <div id="tab-products" class="admin-tab active">
+        <h2 style="margin-bottom: 20px; color: var(--gold);">Manage Products</h2>
+        
+        <div class="card container" style="margin-bottom: 40px; max-width: 800px; margin-left: 0; padding: 30px; border-radius: 19px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);">
+          <h3 style="margin-bottom: 15px;">Add New Product</h3>
+          <form id="addProductForm" style="display: flex; flex-direction: column; gap: 15px;">
+            <input type="text" id="addName" placeholder="Product Name" style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required>
+            <textarea id="addDesc" placeholder="Product Description" rows="3" style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required></textarea>
+            <div style="display: flex; gap: 15px;">
+              <input type="number" id="addPrice" placeholder="Price (INR)" style="flex: 1; padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required>
+              <select id="addCollection" style="flex: 1; padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required>
+                <option value="" disabled selected>Select Collection Category</option>
+                <!-- Populated by JS -->
+              </select>
+            </div>
+            <input type="text" id="addSizes" placeholder="Sizes (comma separated, e.g. S, M, L, Custom)" style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required>
+            
+            <div style="margin-top: 10px;">
+              <label style="color: var(--text-muted); display: block; margin-bottom: 5px;">Product Image</label>
+              <input type="file" id="addImage" accept="image/*" style="color: white;" required>
+            </div>
+            
+            <button type="submit" style="width: 200px; margin-top: 10px; padding: 10px; background: var(--gold); border: none; font-weight: bold; border-radius: 5px; cursor: pointer;">Upload Product</button>
+          </form>
+        </div>
+
+        <h3 style="margin-bottom: 15px;">Current Products</h3>
+        <div style="overflow-x: auto;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Image</th>
+                <th>Name</th>
+                <th>Price</th>
+                <th>Category</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="adminProductsTable">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Requests Tab -->
+      <div id="tab-requests" class="admin-tab" style="display: none;">
+        <h2 style="margin-bottom: 20px; color: var(--gold);">Client Requests & Orders</h2>
+        
+        <div style="overflow-x: auto;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Client</th>
+                <th>Product</th>
+                <th>Size</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="adminRequestsTable">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Edit Product Modal -->
+  <div id="editProductModal" class="admin-login-container" style="display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;">
+    <div class="card container" style="position: relative; max-width: 600px; width: 90%; padding: 40px; border-radius: 19px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px);">
+      <button class="close-btn magnetic" style="position: absolute; top: 15px; right: 20px; background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer;" onclick="document.getElementById('editProductModal').style.display='none'">&times;</button>
+      <h2 style="color: var(--gold); text-align: center; margin-bottom: 20px; font-family: var(--font-serif);">Edit Product</h2>
+      
+      <form id="editProductForm" style="display: flex; flex-direction: column; gap: 15px;">
+        <input type="hidden" id="editId">
+        <input type="text" id="editName" placeholder="Product Name" style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required>
+        <textarea id="editDesc" placeholder="Product Description" rows="3" style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required></textarea>
+        <div style="display: flex; gap: 15px;">
+          <input type="number" id="editPrice" placeholder="Price (INR)" style="flex: 1; padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required>
+          <select id="editCollection" style="flex: 1; padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required>
+            <option value="" disabled selected>Select Collection Category</option>
+            <!-- Populated by JS -->
+          </select>
+        </div>
+        <input type="text" id="editSizes" placeholder="Sizes (comma separated)" style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required>
+        
+        <div style="margin-top: 10px;">
+          <label style="color: var(--text-muted); display: block; margin-bottom: 5px;">Update Image (Leave empty to keep current)</label>
+          <input type="file" id="editImage" accept="image/*" style="color: white;">
+        </div>
+        
+        <button type="submit" style="width: 100%; padding: 10px; background: var(--gold); border: none; font-weight: bold; border-radius: 5px; cursor: pointer;">Save Changes</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>
