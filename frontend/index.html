@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>AZ Fashion | Redefining High-End Ethnic Wear</title>
     
     <!-- Google Fonts -->
@@ -357,7 +357,9 @@
       <!-- Glassmorphic Inquiry Modal (Keep for header button) -->
       <div id="inquiryModal" class="glass-modal">
         <div class="glass-modal-content">
-          <button class="close-btn magnetic" onclick="document.getElementById('inquiryModal').classList.remove('active')"><i class="fas fa-arrow-left"></i> Back</button>
+          <div class="modal-top-bar">
+            <button class="modal-back-btn magnetic" onclick="document.getElementById('inquiryModal').classList.remove('active')"><i class="fas fa-arrow-left"></i> Back</button>
+          </div>
           <h2 class="modal-heading">Private Consultation</h2>
           <p class="modal-desc">Book an exclusive appointment with our master tailors.</p>
           <form id="inquiryForm" class="inquiry-form">
@@ -399,7 +401,9 @@
       <!-- Product Details Modal -->
       <div id="productDetailsModal" class="glass-modal">
         <div class="glass-modal-content product-details-modal-content">
-          <button class="close-btn magnetic" onclick="document.getElementById('productDetailsModal').classList.remove('active')"><i class="fas fa-arrow-left"></i> Back</button>
+          <div class="modal-top-bar" style="width: 100%;">
+            <button class="modal-back-btn magnetic" onclick="document.getElementById('productDetailsModal').classList.remove('active')"><i class="fas fa-arrow-left"></i> Back</button>
+          </div>
           
           <div class="product-details-img" style="flex: 1; border-radius: 12px; overflow: hidden;">
             <img id="pdImg" src="" alt="Product Image" style="width: 100%; object-fit: cover;">
@@ -451,10 +455,12 @@
 
       <!-- Requests / Checkout Cart Modal -->
       <div id="requestsModal" class="glass-modal" style="padding: 20px 0; overflow-y: auto;">
-        <div style="position: relative; max-width: 600px; width: 90%; margin: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100%;">
-          <button class="close-btn magnetic" onclick="document.getElementById('requestsModal').classList.remove('active')"><i class="fas fa-arrow-left"></i> Back</button>
+        <div style="position: relative; max-width: 600px; width: 92%; margin: auto; display: flex; flex-direction: column; align-items: stretch; justify-content: center; min-height: 100%; padding: 25px 0;">
+          <div class="modal-top-bar" style="width: 100%; margin-bottom: 12px;">
+            <button class="modal-back-btn magnetic" onclick="document.getElementById('requestsModal').classList.remove('active')"><i class="fas fa-arrow-left"></i> Back</button>
+          </div>
           
-          <div class="card container" style="margin-top: 40px; margin-bottom: 40px;">
+          <div class="card container" style="margin-top: 0; margin-bottom: 40px;">
             <div class="title">Cart / Checkout</div>
             <hr>
             
@@ -528,8 +534,10 @@
 
       <!-- Order Confirmation Modal -->
       <div id="orderConfirmationModal" class="glass-modal">
-        <div class="glass-modal-content" style="max-width: 500px; width: 90%; text-align: center; padding: 50px;">
-          <button class="close-btn magnetic" onclick="document.getElementById('orderConfirmationModal').classList.remove('active')"><i class="fas fa-arrow-left"></i> Back</button>
+        <div class="glass-modal-content" style="max-width: 500px; width: 90%; text-align: center; padding: 40px 25px;">
+          <div class="modal-top-bar" style="margin-bottom: 10px;">
+            <button class="modal-back-btn magnetic" onclick="document.getElementById('orderConfirmationModal').classList.remove('active')"><i class="fas fa-arrow-left"></i> Back</button>
+          </div>
           
           <div style="margin-bottom: 20px; color: var(--gold); font-size: 4rem;">
             <i class="fas fa-check-circle"></i>
@@ -551,7 +559,9 @@
       <!-- Account Dashboard Modal -->
       <div id="accountModal" class="glass-modal">
         <div class="glass-modal-content" style="max-width: 600px; width: 90%;">
-          <button class="close-btn magnetic" onclick="document.getElementById('accountModal').classList.remove('active')"><i class="fas fa-arrow-left"></i> Back</button>
+          <div class="modal-top-bar" style="margin-bottom: 15px;">
+            <button class="modal-back-btn magnetic" onclick="document.getElementById('accountModal').classList.remove('active')"><i class="fas fa-arrow-left"></i> Back</button>
+          </div>
           
           <h2 class="modal-heading">My Account</h2>
           <div style="text-align: center; margin-bottom: 20px;">

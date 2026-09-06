@@ -167,10 +167,54 @@ document.addEventListener('DOMContentLoaded', () => {
             card.style.transform = `rotateX(0) rotateY(0)`;
           });
         });
+        // Manual touch swipe & mouse drag + auto-sliding
+        if (collectionsContainer) {
+          let isDown = false;
+          let startX, scrollLeftVal;
+          let autoScrollActive = true;
+          let resumeTimeout = null;
+
+          collectionsContainer.addEventListener('mousedown', (e) => {
+            isDown = true;
+            autoScrollActive = false;
+            startX = e.pageX - collectionsContainer.offsetLeft;
+            scrollLeftVal = collectionsContainer.scrollLeft;
+          });
+          window.addEventListener('mouseup', () => {
+            if (isDown) {
+              isDown = false;
+              clearTimeout(resumeTimeout);
+              resumeTimeout = setTimeout(() => { autoScrollActive = true; }, 2000);
+            }
+          });
+          collectionsContainer.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - collectionsContainer.offsetLeft;
+            const walk = (x - startX) * 1.5;
+            collectionsContainer.scrollLeft = scrollLeftVal - walk;
+          });
+
+          collectionsContainer.addEventListener('touchstart', () => {
+            autoScrollActive = false;
+            clearTimeout(resumeTimeout);
+          }, { passive: true });
+          collectionsContainer.addEventListener('touchend', () => {
+            clearTimeout(resumeTimeout);
+            resumeTimeout = setTimeout(() => { autoScrollActive = true; }, 2500);
+          }, { passive: true });
+
+          setInterval(() => {
+            if (autoScrollActive && !isDown) {
+              collectionsContainer.scrollLeft += 1;
+              if (collectionsContainer.scrollLeft >= (collectionsGrid.scrollWidth / 2)) {
+                collectionsContainer.scrollLeft = 0;
+              }
+            }
+          }, 30);
+        }
       })
       .catch(console.error);
-
-    // Native CSS horizontal scrolling is now used for collections grid.
   }
 
   // Navigation Logic
