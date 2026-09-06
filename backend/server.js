@@ -360,6 +360,11 @@ app.post('/api/products/:id/reviews', (req, res) => {
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
 app.use(express.static(path.join(__dirname, '../frontend/public')));
 
+// Direct route for admin dashboard
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/dist/admin.html'));
+});
+
 app.use((req, res, next) => {
   if (req.path.startsWith('/api')) return next();
   res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
