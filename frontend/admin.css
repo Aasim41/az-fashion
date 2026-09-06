@@ -95,3 +95,81 @@ body {
   background: #ff5252;
   color: #fff;
 }
+
+/* ==========================================================
+   MOBILE RESPONSIVE ADMIN DASHBOARD
+   ========================================================== */
+@media (max-width: 768px) {
+  #adminDashboard {
+    flex-direction: column;
+  }
+
+  .admin-sidebar {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px;
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    gap: 8px;
+  }
+
+  .admin-sidebar h2 {
+    margin-bottom: 0 !important;
+    font-size: 1.2rem !important;
+    width: 100%;
+    text-align: left !important;
+  }
+
+  .admin-nav-btn {
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    margin-bottom: 0;
+  }
+
+  .admin-content {
+    padding: 15px;
+  }
+
+  .card.container {
+    padding: 18px !important;
+    width: 100% !important;
+  }
+
+  #adminLogin .card.container {
+    margin: 40px auto !important;
+    width: 90% !important;
+    padding: 25px 18px !important;
+  }
+
+  #addProductForm > div, #editProductForm > div {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  .admin-table th, .admin-table td {
+    padding: 10px 8px;
+    font-size: 0.85rem;
+  }
+
+  .admin-table td img {
+    width: 40px;
+    height: 40px;
+  }
+
+  .btn-action {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    margin-top: 4px;
+    display: inline-block;
+  }
+
+  #editProductModal .card.container {
+    padding: 25px 15px !important;
+    width: 95% !important;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+}
