@@ -28,7 +28,10 @@
         <span>Requests & Orders</span>
         <span id="adminRequestsBadge" style="display: none; background: #e53935; color: white; border-radius: 12px; padding: 2px 7px; font-size: 0.72rem; font-weight: 700; box-shadow: 0 0 8px rgba(229,57,53,0.6);">0</span>
       </button>
-      <button class="admin-nav-btn" onclick="logoutAdmin()" style="margin-top: auto; color: #ff5252;">Logout</button>
+      <button id="adminNotifBtn" class="admin-nav-btn" style="color: var(--gold); display: flex; align-items: center; gap: 8px; margin-top: auto;" onclick="requestAdminNotificationPermission()">
+        <i class="fas fa-bell"></i> <span>Notifications</span>
+      </button>
+      <button class="admin-nav-btn" onclick="logoutAdmin()" style="margin-top: 10px; color: #ff5252;">Logout</button>
     </div>
 
     <div class="admin-content">
@@ -137,6 +140,21 @@
     </div>
   </div>
 
-  <script type="module" src="./admin.js"></script>
+  <!-- Admin Real-Time Notification Banner -->
+  <div id="adminNotifyBanner" style="display: none; position: fixed; top: 25px; right: 25px; z-index: 99999; background: rgba(18, 18, 18, 0.96); backdrop-filter: blur(12px); border: 1px solid var(--gold); border-radius: 12px; padding: 16px 20px; box-shadow: 0 12px 35px rgba(0,0,0,0.85), 0 0 15px rgba(212,175,55,0.3); max-width: 380px; color: #fff;">
+    <div style="display: flex; align-items: flex-start; gap: 12px;">
+      <div style="background: rgba(212,175,55,0.2); width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+        <i class="fas fa-bell" style="color: var(--gold); font-size: 1.15rem;"></i>
+      </div>
+      <div style="flex: 1;">
+        <div style="font-weight: 700; font-size: 0.95rem; color: var(--gold);" id="adminNotifyTitle">New Client Request!</div>
+        <div style="font-size: 0.85rem; margin-top: 4px; opacity: 0.9; line-height: 1.3;" id="adminNotifyBody">A client has placed a new request.</div>
+        <button type="button" id="adminNotifyViewBtn" style="margin-top: 10px; background: var(--gold); color: #000; border: none; padding: 6px 14px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; cursor: pointer;">View Requests &rarr;</button>
+      </div>
+      <button type="button" onclick="document.getElementById('adminNotifyBanner').style.display='none'" style="background: transparent; border: none; color: rgba(255,255,255,0.5); cursor: pointer; font-size: 1.1rem; padding: 0 4px;"><i class="fas fa-times"></i></button>
+    </div>
+  </div>
+
+  <script type="module" src="./admin.js?v=2"></script>
 </body>
 </html>

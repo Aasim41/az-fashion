@@ -14,13 +14,184 @@ function handleAuthError(res) {
   return false;
 }
 
+// Gentle luxury chime via Web Audio API (no external file required)
+function playNotificationSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+    osc.frequency.setValueAtTime(880.00, ctx.currentTime + 0.12); // A5
+    gain.gain.setValueAtTime(0.25, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.45);
+  } catch(e) {}
+}
+
+window.requestAdminNotificationPermission = () => {
+  if (!("Notification" in window)) {
+    return alert("Your browser does not support desktop notifications.");
+  }
+  Notification.requestPermission().then(perm => {
+    updateNotifButtonState();
+    if (perm === 'granted') {
+      try {
+        new Notification("AZ Fashion Admin", {
+          body: "Web Notifications active! You will receive instant alerts for new customer requests.",
+          icon: '/images/col_daily.png'
+        });
+      } catch(e) {}
+    }
+  });
+};
+
+function updateNotifButtonState() {
+  const btn = document.getElementById('adminNotifBtn');
+  if (!btn) return;
+  if (!("Notification" in window)) {
+    btn.style.display = 'none';
+    return;
+  }
+  if (Notification.permission === 'granted') {
+    btn.innerHTML = '<i class="fas fa-bell" style="color: #4caf50;"></i> <span style="color: #4caf50;">Alerts: Active</span>';
+    btn.title = 'Web Notifications are active';
+  } else if (Notification.permission === 'denied') {
+    btn.innerHTML = '<i class="fas fa-bell-slash" style="color: #f44336;"></i> <span style="color: #f44336;">Alerts: Blocked</span>';
+    btn.title = 'Notifications are blocked in your browser settings';
+  } else {
+    btn.innerHTML = '<i class="fas fa-bell" style="color: var(--gold);"></i> <span>Enable Alerts</span>';
+    btn.title = 'Click to enable real-time notifications';
+  }
+}
+
+let knownRequestIds = null;
+let adminPollerTimer = null;
+
+function startAdminRequestPoller() {
+  if (adminPollerTimer) clearInterval(adminPollerTimer);
+  checkNewRequests();
+  adminPollerTimer = setInterval(checkNewRequests, 12000); // Check every 12 seconds
+}
+
+function checkNewRequests() {
+  if (!sessionStorage.getItem('az_admin_token')) return;
+
+  fetch('/api/admin/requests', {
+    headers: getAuthHeaders()
+  }).then(async r => {
+    if (r.status === 401 || r.status === 403) return;
+    const reqs = await r.json();
+    if (!Array.isArray(reqs)) return;
+
+    const pendingReqs = reqs.filter(r => r.status === 'pending');
+    
+    // Update badge count on sidebar
+    const badge = document.getElementById('adminRequestsBadge');
+    if (badge) {
+      if (pendingReqs.length > 0) {
+        badge.innerText = pendingReqs.length;
+        badge.style.display = 'inline-block';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+
+    if (knownRequestIds === null) {
+      // First run: track existing pending requests so we don't alert old ones
+      knownRequestIds = new Set(pendingReqs.map(r => r.id));
+      return;
+    }
+
+    // Identify brand new pending requests
+    const newReqs = pendingReqs.filter(r => !knownRequestIds.has(r.id));
+    if (newReqs.length > 0) {
+      newReqs.forEach(req => {
+        knownRequestIds.add(req.id);
+        triggerAdminNotification(req);
+      });
+
+      // Refresh table if tab-requests is currently displayed
+      const reqTab = document.getElementById('tab-requests');
+      if (reqTab && reqTab.style.display !== 'none') {
+        loadRequests();
+      }
+    }
+  }).catch(() => {});
+}
+
+function triggerAdminNotification(req) {
+  // 1. Play sound
+  playNotificationSound();
+
+  // 2. Native OS / Browser Web Notification API
+  if ("Notification" in window && Notification.permission === "granted") {
+    try {
+      let iconImg = req.image_url || '/images/col_daily.png';
+      if (iconImg.startsWith('[')) {
+        try { iconImg = JSON.parse(iconImg)[0] || iconImg; } catch(e) {}
+      }
+      const notif = new Notification("AZ Fashion - New Client Request! ✨", {
+        body: `${req.user_name || 'Client'} requested "${req.product_name}" (Size: ${req.size || 'N/A'}, ₹${req.price})`,
+        icon: iconImg,
+        badge: iconImg,
+        tag: 'req-' + req.id
+      });
+      notif.onclick = () => {
+        window.focus();
+        document.querySelector('.admin-nav-btn[data-tab="requests"]')?.click();
+      };
+    } catch(e) {}
+  }
+
+  // 3. In-Dashboard floating toast banner
+  const banner = document.getElementById('adminNotifyBanner');
+  const title = document.getElementById('adminNotifyTitle');
+  const body = document.getElementById('adminNotifyBody');
+  const viewBtn = document.getElementById('adminNotifyViewBtn');
+
+  if (banner && title && body && viewBtn) {
+    title.innerText = `✨ New Request from ${req.user_name || 'Client'}`;
+    body.innerHTML = `<strong>${req.product_name}</strong> &bull; Size: ${req.size || 'N/A'} &bull; <span style="color:var(--gold)">₹${req.price}</span>`;
+    viewBtn.onclick = () => {
+      banner.style.display = 'none';
+      document.querySelector('.admin-nav-btn[data-tab="requests"]')?.click();
+    };
+    banner.style.display = 'block';
+
+    setTimeout(() => {
+      if (banner && banner.style.display !== 'none') {
+        banner.style.opacity = '0';
+        setTimeout(() => {
+          banner.style.display = 'none';
+          banner.style.opacity = '1';
+        }, 400);
+      }
+    }, 15000);
+  }
+}
+
 function showAdminDashboard() {
   document.getElementById('adminLogin').style.display = 'none';
   document.getElementById('adminDashboard').style.display = 'flex';
   loadCollections();
+  updateNotifButtonState();
+
+  // Ask for Web Notification permission immediately upon entering dashboard
+  if ("Notification" in window && Notification.permission === "default") {
+    try {
+      Notification.requestPermission().then(updateNotifButtonState).catch(() => {});
+    } catch(e) {}
+  }
+
+  startAdminRequestPoller();
 }
 
 window.logoutAdmin = () => {
+  if (adminPollerTimer) clearInterval(adminPollerTimer);
   sessionStorage.removeItem('az_admin_token');
   document.getElementById('adminDashboard').style.display = 'none';
   document.getElementById('adminLogin').style.display = 'flex';
@@ -29,6 +200,20 @@ window.logoutAdmin = () => {
 // Check if admin is already logged in
 if (sessionStorage.getItem('az_admin_token')) {
   showAdminDashboard();
+}
+
+// Ask for notification permission on initial page load / gesture as well
+if ("Notification" in window && Notification.permission === "default") {
+  try {
+    Notification.requestPermission().then(updateNotifButtonState).catch(() => {});
+  } catch(e) {}
+  const askGesture = () => {
+    if (Notification.permission === "default") {
+      Notification.requestPermission().then(updateNotifButtonState).catch(() => {});
+    }
+    document.removeEventListener('click', askGesture);
+  };
+  document.addEventListener('click', askGesture, { once: true });
 }
 
 // Login Form Submit
@@ -64,7 +249,11 @@ document.querySelectorAll('.admin-nav-btn[data-tab]').forEach(btn => {
     document.querySelectorAll('.admin-tab').forEach(t => t.style.display = 'none');
     
     btn.classList.add('active');
-    document.getElementById('tab-' + btn.getAttribute('data-tab')).style.display = 'block';
+    const tabName = btn.getAttribute('data-tab');
+    document.getElementById('tab-' + tabName).style.display = 'block';
+    if (tabName === 'requests') {
+      loadRequests();
+    }
   });
 });
 

@@ -94,6 +94,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }, 25000);
 
+  // Request Web Notification permission as soon as opening the website
+  function initNotificationPermission() {
+    if ("Notification" in window) {
+      if (Notification.permission === "default") {
+        // 1. Prompt immediately upon opening the website
+        try {
+          Notification.requestPermission().catch(() => {});
+        } catch(e) {}
+
+        // 2. Also ensure prompt fires on very first user gesture (touch or click)
+        // for mobile browsers that block passive permission requests
+        const askOnFirstGesture = () => {
+          if (Notification.permission === "default") {
+            try {
+              Notification.requestPermission().catch(() => {});
+            } catch(e) {}
+          }
+          window.removeEventListener('click', askOnFirstGesture);
+          window.removeEventListener('touchstart', askOnFirstGesture);
+        };
+        window.addEventListener('click', askOnFirstGesture, { once: true });
+        window.addEventListener('touchstart', askOnFirstGesture, { once: true });
+      }
+    }
+  }
+
+  initNotificationPermission();
+
   updateNavUser();
   updateMyRequestsBadge();
 
@@ -709,6 +737,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (currentUser) {
       currentUser.tcAccepted = true;
       localStorage.setItem('az_user', JSON.stringify(currentUser));
+    }
+
+    if ("Notification" in window && Notification.permission === "default") {
+      try { Notification.requestPermission().catch(() => {}); } catch(e) {}
     }
 
     const onboardingFlow = document.getElementById('onboardingFlow');
