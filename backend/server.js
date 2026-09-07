@@ -9,49 +9,9 @@ const jwt = require('jsonwebtoken');
 const Razorpay = require('razorpay');
 const multer = require('multer');
 const path = require('path');
-const nodemailer = require('nodemailer');
 const supabase = require('./supabase');
 
 
-// Nodemailer Setup
-let transporter;
-async function setupMailer() {
-  if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-    transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
-    });
-    console.log('Real Email Transporter configured.');
-  } else {
-    try {
-      const testAccount = await nodemailer.createTestAccount();
-      transporter = nodemailer.createTransport({
-        host: 'smtp.ethereal.email',
-        port: 587,
-        secure: false,
-        auth: { user: testAccount.user, pass: testAccount.pass }
-      });
-      console.log('Mock Email Transporter configured (Ethereal).');
-    } catch (e) {
-      console.error('Failed to setup mock mailer', e);
-    }
-  }
-}
-setupMailer();
-
-async function sendEmail(to, subject, html) {
-  if (!transporter) return;
-  try {
-    const info = await transporter.sendMail({
-      from: '"AZ Fashion" <noreply@azfashion.com>',
-      to,
-      subject,
-      html
-    });
-    console.log('Email sent: %s', info.messageId);
-    if (!process.env.EMAIL_USER) {
-      console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
-    }
   } catch (err) {
     console.error('Email Error:', err);
   }
@@ -580,18 +540,7 @@ app.post('/api/requests', authenticateUser, async (req, res) => {
 
     if (error) throw error;
 
-    // Send Email
-    try {
-      const { data: u } = await supabase.from('users').select('email').eq('id', user_id).single();
-      const { data: p } = await supabase.from('products').select('name').eq('id', product_id).single();
-      if (u && p) {
-        sendEmail(u.email, 'Request Received - AZ Fashion', `
-          <h1>Thank you for your request!</h1>
-          <p>We have received your request for <strong>${p.name}</strong> (Size: ${size}).</p>
-          <p>Our team is reviewing the availability. We will notify you once approved so you can proceed with payment.</p>
-        `);
-      }
-    } catch(e) {}
+    
 
     res.status(201).json({ id: data.id, message: 'Request submitted successfully' });
   } catch (err) {
@@ -722,17 +671,7 @@ app.post('/api/requests/:id/approve', authenticateAdmin, async (req, res) => {
     const { data: reqData, error } = await supabase.from('requests').update({ status: 'available' }).eq('id', requestId).select().single();
     if (error) throw error;
     
-    try {
-      const { data: u } = await supabase.from('users').select('email').eq('id', reqData.user_id).single();
-      const { data: p } = await supabase.from('products').select('name').eq('id', reqData.product_id).single();
-      if (u && p) {
-        sendEmail(u.email, 'Request Approved! - AZ Fashion', `
-          <h1>Great news!</h1>
-          <p>Your request for <strong>${p.name}</strong> (Size: ${reqData.size}) has been approved!</p>
-          <p>Please log in to your account and complete your payment to confirm your order.</p>
-        `);
-      }
-    } catch(e) {}
+    
 
     res.json({ message: 'Request approved and is now available for payment' });
   } catch (err) {
@@ -819,17 +758,7 @@ app.post('/api/razorpay/verify', async (req, res) => {
                   });
                   if (modified) await supabase.from('products').update({ sizes: JSON.stringify(sizesArr) }).eq('id', r.product_id);
                   
-                  // Send Email
-                  const { data: u } = await supabase.from('users').select('email').eq('id', r.user_id).single();
-                  if (u) {
-                    sendEmail(u.email, 'Payment Receipt - AZ Fashion', `
-                      <h1>Payment Successful</h1>
-                      <p>Thank you for your purchase of <strong>${p.name}</strong> (Size: ${r.size}).</p>
-                      <p>Your order is now being processed.</p>
-                    `);
-                  }
-                }
-              } catch(e) { console.error('Inventory/Email error on payment', e); }
+                  } catch(e) { console.error('Inventory error on payment', e); }
             }
           }
         }
