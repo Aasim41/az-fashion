@@ -11,12 +11,6 @@ const multer = require('multer');
 const path = require('path');
 const supabase = require('./supabase');
 
-
-  } catch (err) {
-    console.error('Email Error:', err);
-  }
-}
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'az_luxury_fashion_jwt_production_secret_2026';
@@ -757,8 +751,8 @@ app.post('/api/razorpay/verify', async (req, res) => {
                     return s;
                   });
                   if (modified) await supabase.from('products').update({ sizes: JSON.stringify(sizesArr) }).eq('id', r.product_id);
-                  
-                  } catch(e) { console.error('Inventory error on payment', e); }
+                }
+              } catch(e) { console.error('Inventory error on payment', e); }
             }
           }
         }
