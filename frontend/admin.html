@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="admin.css">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   
@@ -23,7 +24,8 @@
   <div id="adminDashboard" style="display: none;">
     <div class="admin-sidebar">
       <h2 style="color: var(--gold); margin-bottom: 30px; font-family: var(--font-serif); text-align: center;">AZ Admin</h2>
-      <button class="admin-nav-btn active" data-tab="products">Products</button>
+      <button class="admin-nav-btn active" data-tab="dashboard">Dashboard</button>
+      <button class="admin-nav-btn" data-tab="products">Products</button>
       <button class="admin-nav-btn" data-tab="requests" style="position: relative; display: flex; align-items: center; justify-content: space-between;">
         <span>Requests & Orders</span>
         <span id="adminRequestsBadge" style="display: none; background: #e53935; color: white; border-radius: 12px; padding: 2px 7px; font-size: 0.72rem; font-weight: 700; box-shadow: 0 0 8px rgba(229,57,53,0.6);">0</span>
@@ -36,8 +38,39 @@
 
     <div class="admin-content">
       
+      
+      <!-- Dashboard Tab -->
+      <div id="tab-dashboard" class="admin-tab active">
+        <h2 style="margin-bottom: 20px; color: var(--gold);">Business Dashboard</h2>
+        
+        <div style="display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap;">
+          <div class="card container" style="flex: 1; min-width: 200px; padding: 20px; text-align: center; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,215,0,0.3);">
+            <h4 style="color: var(--text-muted); margin-bottom: 10px;">Total Revenue</h4>
+            <div id="dashTotalRevenue" style="font-size: 2rem; color: var(--gold); font-weight: bold;">₹0</div>
+          </div>
+          <div class="card container" style="flex: 1; min-width: 200px; padding: 20px; text-align: center; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,215,0,0.3);">
+            <h4 style="color: var(--text-muted); margin-bottom: 10px;">Pending Requests</h4>
+            <div id="dashPendingRequests" style="font-size: 2rem; color: #ff9800; font-weight: bold;">0</div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+          <div class="card container" style="flex: 2; min-width: 400px; padding: 20px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);">
+            <h3 style="margin-bottom: 15px; color: var(--gold);">Revenue Overview (This Year)</h3>
+            <canvas id="revenueChart" style="width: 100%; height: 300px;"></canvas>
+          </div>
+          
+          <div class="card container" style="flex: 1; min-width: 250px; padding: 20px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);">
+            <h3 style="margin-bottom: 15px; color: var(--gold);">Top Requested Products</h3>
+            <div id="dashTopProducts" style="display: flex; flex-direction: column; gap: 10px;">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Products Tab -->
-      <div id="tab-products" class="admin-tab active">
+      <div id="tab-products" class="admin-tab" style="display: none;">
         <h2 style="margin-bottom: 20px; color: var(--gold);">Manage Products</h2>
         
         <div class="card container" style="margin-bottom: 40px; max-width: 800px; margin-left: 0; padding: 30px; border-radius: 19px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);">
@@ -52,7 +85,13 @@
                 <!-- Populated by JS -->
               </select>
             </div>
-            <input type="text" id="addSizes" placeholder="Sizes (comma separated, e.g. S, M, L, Custom)" style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required>
+            
+            <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+              <label style="color: var(--gold); display: block; margin-bottom: 10px; font-weight: bold;">Inventory (Sizes & Stock)</label>
+              <div id="addSizeContainer" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px;"></div>
+              <button type="button" id="addSizeRowBtn" style="background: transparent; border: 1px dashed var(--gold); color: var(--gold); padding: 8px; border-radius: 5px; cursor: pointer; width: 100%;">+ Add Size / Stock</button>
+            </div>
+
             
             <div style="margin-top: 10px;">
               <label style="color: var(--text-muted); display: block; margin-bottom: 5px;">Product Images (Select 1 or more photos)</label>
@@ -127,7 +166,13 @@
             <!-- Populated by JS -->
           </select>
         </div>
-        <input type="text" id="editSizes" placeholder="Sizes (comma separated)" style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required>
+        
+        <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+          <label style="color: var(--gold); display: block; margin-bottom: 10px; font-weight: bold;">Inventory (Sizes & Stock)</label>
+          <div id="editSizeContainer" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px;"></div>
+          <button type="button" id="editSizeRowBtn" style="background: transparent; border: 1px dashed var(--gold); color: var(--gold); padding: 8px; border-radius: 5px; cursor: pointer; width: 100%;">+ Add Size / Stock</button>
+        </div>
+
         
         <div style="margin-top: 10px;">
           <label style="color: var(--text-muted); display: block; margin-bottom: 5px;">Update Images (Select 1 or more photos, or leave empty to keep current)</label>

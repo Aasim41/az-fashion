@@ -1,4 +1,56 @@
 document.addEventListener('DOMContentLoaded', () => {
+
+// Global Search & Filter
+document.getElementById('applyFiltersBtn')?.addEventListener('click', () => {
+  const search = document.getElementById('filterSearch').value.trim();
+  const size = document.getElementById('filterSize').value;
+  const minPrice = document.getElementById('filterMinPrice').value;
+  const maxPrice = document.getElementById('filterMaxPrice').value;
+  
+  if (!search && !size && !minPrice && !maxPrice) {
+    showToast('Please enter a search term or filter.', 'error');
+    return;
+  }
+
+  // Construct query string
+  let qs = '?';
+  if (search) qs += `search=${encodeURIComponent(search)}&`;
+  if (size) qs += `size=${encodeURIComponent(size)}&`;
+  if (minPrice) qs += `min_price=${minPrice}&`;
+  if (maxPrice) qs += `max_price=${maxPrice}&`;
+
+  fetch(`/api/products${qs}`)
+    .then(r => r.json())
+    .then(products => {
+      document.getElementById('modalCollectionName').textContent = 'Search Results';
+      document.getElementById('modalCollectionDesc').textContent = `Found ${products.length} products matching your criteria.`;
+      const grid = document.getElementById('modalProductsGrid');
+      grid.innerHTML = '';
+      if (products.length === 0) {
+         grid.innerHTML = '<p style="color:white;text-align:center;width:100%;">No products found.</p>';
+      } else {
+         products.forEach((prod, index) => {
+          const card = document.createElement('div');
+          card.className = 'product-card reveal';
+          card.style.animationDelay = (index * 0.1) + 's';
+          card.innerHTML = `
+            <div class="product-image"><img src="${prod.image_url}" alt="${prod.name}"></div>
+            <div class="product-info">
+              <h3 class="product-title">${prod.name}</h3>
+              <div class="product-price">₹${prod.price}</div>
+            </div>
+          `;
+          card.onclick = () => {
+            window.openProductModal(prod);
+          };
+          grid.appendChild(card);
+        });
+      }
+      document.getElementById('collectionModal').classList.add('active');
+    })
+    .catch(err => console.error(err));
+});
+
   let currentUser = JSON.parse(localStorage.getItem('az_user') || 'null');
   let selectedProduct = null;
   let selectedSize = null;
