@@ -1,14 +1,19 @@
 document.addEventListener('DOMContentLoaded', () => {
 
 // Global Search & Filter
-document.getElementById('applyFiltersBtn')?.addEventListener('click', () => {
-  const search = document.getElementById('filterSearch').value.trim();
-  const size = document.getElementById('filterSize').value;
-  const minPrice = document.getElementById('filterMinPrice').value;
-  const maxPrice = document.getElementById('filterMaxPrice').value;
+function executeSearchAndFilter() {
+  const searchInput = document.getElementById('filterSearch');
+  const sizeSelect = document.getElementById('filterSize');
+  const minPriceInput = document.getElementById('filterMinPrice');
+  const maxPriceInput = document.getElementById('filterMaxPrice');
+
+  const search = searchInput ? searchInput.value.trim() : '';
+  const size = sizeSelect ? sizeSelect.value : '';
+  const minPrice = minPriceInput ? minPriceInput.value : '';
+  const maxPrice = maxPriceInput ? maxPriceInput.value : '';
   
   if (!search && !size && !minPrice && !maxPrice) {
-    showToast('Please enter a search term or filter.', 'error');
+    alert('Please enter a search term or select a filter.');
     return;
   }
 
@@ -19,36 +24,61 @@ document.getElementById('applyFiltersBtn')?.addEventListener('click', () => {
   if (minPrice) qs += `min_price=${minPrice}&`;
   if (maxPrice) qs += `max_price=${maxPrice}&`;
 
+  const modal = document.getElementById('collectionModal');
+  const grid = document.getElementById('modalProductsGrid');
+  const nameEl = document.getElementById('modalCollectionName');
+  const descEl = document.getElementById('modalCollectionDesc');
+
+  nameEl.innerText = 'Search Results';
+  descEl.innerText = 'Searching catalog...';
+  grid.innerHTML = '<p style="color:white; text-align:center; width:100%;">Finding exquisite pieces...</p>';
+  modal.classList.add('active');
+  document.body.style.overflow = 'hidden';
+
   fetch(`/api/products${qs}`)
     .then(r => r.json())
     .then(products => {
-      document.getElementById('modalCollectionName').textContent = 'Search Results';
-      document.getElementById('modalCollectionDesc').textContent = `Found ${products.length} products matching your criteria.`;
-      const grid = document.getElementById('modalProductsGrid');
+      descEl.innerText = `Found ${products.length} product${products.length === 1 ? '' : 's'} matching your criteria.`;
       grid.innerHTML = '';
-      if (products.length === 0) {
-         grid.innerHTML = '<p style="color:white;text-align:center;width:100%;">No products found.</p>';
-      } else {
-         products.forEach((prod, index) => {
-          const card = document.createElement('div');
-          card.className = 'product-card reveal';
-          card.style.animationDelay = (index * 0.1) + 's';
-          card.innerHTML = `
-            <div class="product-image"><img src="${prod.image_url}" alt="${prod.name}"></div>
-            <div class="product-info">
-              <h3 class="product-title">${prod.name}</h3>
-              <div class="product-price">₹${prod.price}</div>
-            </div>
-          `;
-          card.onclick = () => {
-            window.openProductModal(prod);
-          };
-          grid.appendChild(card);
-        });
+      if (!products || products.length === 0) {
+         grid.innerHTML = '<p style="color:white;text-align:center;width:100%;padding:40px 0;">No products found matching your search.</p>';
+         return;
       }
-      document.getElementById('collectionModal').classList.add('active');
+      products.forEach((prod) => {
+        const card = document.createElement('div');
+        card.className = 'product-card';
+        card.style.cursor = 'pointer';
+        const numericPrice = parseInt(String(prod.price).replace(/[^0-9]/g, '')) || prod.price;
+        card.innerHTML = `
+          <div class="product-img-wrapper">
+            <img src="${prod.image_url || '/images/col_daily.png'}" alt="${prod.name}">
+          </div>
+          <div class="product-info">
+            <h4 class="product-name">${prod.name}</h4>
+            <p class="product-desc">${prod.description || ''}</p>
+            <div class="product-price">₹${numericPrice}</div>
+          </div>
+        `;
+        card.addEventListener('click', () => {
+          if (typeof window.openProductDetails === 'function') {
+            window.openProductDetails(prod);
+          }
+        });
+        grid.appendChild(card);
+      });
     })
-    .catch(err => console.error(err));
+    .catch(err => {
+      console.error(err);
+      grid.innerHTML = '<p style="color:#ff5252;text-align:center;width:100%;">Failed to load search results. Please try again.</p>';
+    });
+}
+
+document.getElementById('applyFiltersBtn')?.addEventListener('click', executeSearchAndFilter);
+document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    executeSearchAndFilter();
+  }
 });
 
   let currentUser = JSON.parse(localStorage.getItem('az_user') || 'null');
