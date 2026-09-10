@@ -29,14 +29,14 @@ app.use(express.json({ limit: '5mb' }));
 // 3. Brute Force & Rate Limiting Protection
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 30, // 30 requests per IP
+  max: 100, // 100 auth requests per IP per 15 min
   message: { error: 'Too many authentication attempts. Please try again in 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 600, // 600 requests per 15 min
+  max: 5000, // 5000 requests per 15 min (generous for polling + UptimeRobot)
   standardHeaders: true,
   legacyHeaders: false,
 });
