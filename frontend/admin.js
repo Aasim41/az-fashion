@@ -418,7 +418,7 @@ document.getElementById('addProductForm').addEventListener('submit', (e) => {
   formData.append('description', document.getElementById('addDesc').value);
   formData.append('price', document.getElementById('addPrice').value);
   formData.append('collection_id', document.getElementById('addCollection').value);
-  formData.append('sizes', document.getElementById('addSizes').value);
+  formData.append('sizes', extractSizes('addSizeContainer'));
   
   const files = document.getElementById('addImages').files;
   if (!files || files.length === 0) {
@@ -454,7 +454,17 @@ window.openEditProduct = (encodedProduct) => {
   document.getElementById('editDesc').value = p.description;
   document.getElementById('editPrice').value = p.price;
   document.getElementById('editCollection').value = p.collection_id || '';
-  // sizes handled by createSizeRow below
+  
+  const sizeCont = document.getElementById('editSizeContainer');
+  if (sizeCont) sizeCont.innerHTML = '';
+  let sizesArr = [];
+  try { sizesArr = JSON.parse(p.sizes || '[]'); } catch(e) {}
+  if (!Array.isArray(sizesArr)) sizesArr = [{ name: 'Default', stock: 10 }];
+  sizesArr.forEach(s => {
+    if (typeof s === 'object') createSizeRow('editSizeContainer', s.name, s.stock);
+    else createSizeRow('editSizeContainer', s, 10);
+  });
+  
   document.getElementById('editImages').value = ''; // Reset file input
   document.getElementById('editImagePreview').innerHTML = '';
   
@@ -471,7 +481,7 @@ document.getElementById('editProductForm').addEventListener('submit', (e) => {
   formData.append('description', document.getElementById('editDesc').value);
   formData.append('price', document.getElementById('editPrice').value);
   formData.append('collection_id', document.getElementById('editCollection').value);
-  formData.append('sizes', document.getElementById('editSizes').value);
+  formData.append('sizes', extractSizes('editSizeContainer'));
   
   const files = document.getElementById('editImages').files;
   if (files && files.length > 0) {
