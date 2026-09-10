@@ -85,6 +85,7 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
   let selectedProduct = null;
   let selectedSize = null;
   let selectedColor = null;
+  let selectedQuantity = 1;
 
   function getUserAuthHeaders() {
     const token = localStorage.getItem('az_token');
@@ -171,7 +172,7 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
 
     if (toast && title && body && actBtn) {
       title.innerText = '✨ Exclusive Request Approved!';
-      body.innerText = `Great news! Your request for "${req.product_name}" is approved & ready for checkout.`;
+      body.innerHTML = `Great news! Your request for "${req.product_name}" is approved & ready for checkout.<br><strong style="color:#ff4d4d; font-size:0.9em;">⚠️ Valid for 24 hours only</strong>`;
       actBtn.onclick = () => {
         toast.style.display = 'none';
         window.openRequestsModal();
@@ -194,7 +195,7 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
       try {
         let notifImg = req.image_url || '/images/col_daily.png';
         new Notification("AZ Fashion - Request Approved!", {
-          body: `Your request for "${req.product_name}" has been approved! Tap to checkout.`,
+          body: `Your request for "${req.product_name}" has been approved! ⚠️ Valid for 24 hours only. Tap to checkout.`,
           icon: notifImg
         });
       } catch(e) {}
@@ -984,17 +985,56 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
     // Render Sizes
     const sizesContainer = document.getElementById('pdSizes');
     sizesContainer.innerHTML = '';
-    (prod.sizes || []).forEach(size => {
+    (prod.sizes || []).forEach(sizeObj => {
+      const sizeName = typeof sizeObj === 'object' ? sizeObj.name : sizeObj;
+      const sizeStock = typeof sizeObj === 'object' ? sizeObj.stock : 10;
+      
       const btn = document.createElement('button');
       btn.className = 'size-btn';
-      btn.innerText = size;
+      btn.innerText = sizeName;
+      if (sizeStock <= 0) {
+        btn.disabled = true;
+        btn.style.opacity = '0.4';
+        btn.style.cursor = 'not-allowed';
+        btn.innerText += ' (Out of stock)';
+      }
       btn.onclick = () => {
         document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected'));
         btn.classList.add('selected');
-        selectedSize = size;
+        selectedSize = sizeName;
       };
       sizesContainer.appendChild(btn);
     });
+
+    // Handle Quantity UI
+    selectedQuantity = 1;
+    const qtyInput = document.getElementById('qtyInput');
+    const qtyMinus = document.getElementById('qtyMinus');
+    const qtyPlus = document.getElementById('qtyPlus');
+    if (qtyInput) qtyInput.value = 1;
+    
+    if (qtyMinus && qtyPlus) {
+      qtyMinus.onclick = () => {
+        if (selectedQuantity > 1) {
+          selectedQuantity--;
+          qtyInput.value = selectedQuantity;
+        }
+      };
+      qtyPlus.onclick = () => {
+        // Find stock of selected size to enforce max quantity
+        let maxStock = 10;
+        if (selectedSize) {
+          const sObj = (prod.sizes || []).find(s => (typeof s === 'object' ? s.name : s) === selectedSize);
+          if (sObj && typeof sObj === 'object') maxStock = sObj.stock;
+        }
+        if (selectedQuantity < maxStock) {
+          selectedQuantity++;
+          qtyInput.value = selectedQuantity;
+        } else {
+          alert('Maximum available stock for this size is ' + maxStock);
+        }
+      };
+    }
 
     // Render Reviews
     function renderReviews(reviews) {
@@ -1079,7 +1119,7 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
       body: JSON.stringify({
         user_id: currentUser.id,
         product_id: selectedProduct.id,
-        size: selectedSize,
+        size: selectedQuantity > 1 ? `${selectedSize} | Qty: ${selectedQuantity}` : selectedSize,
         color: selectedProduct.colors ? selectedProduct.colors[0] : 'Default'
       })
     }).then(r => {
@@ -1269,7 +1309,9 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
           if (r.status === 'paid') statusText = `<span style="color: #2196f3; font-weight: 600;">PAID</span>`;
           
           if (r.status === 'available') {
-            total += r.price;
+            const qtyMatch = r.size.match(/\| Qty: (\d+)/);
+            const reqQty = qtyMatch ? parseInt(qtyMatch[1], 10) : 1;
+            total += (r.price * reqQty);
             payIds.push(r.id);
           }
           
@@ -1294,7 +1336,7 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
               <img src="${reqImg}" alt="${r.product_name}" style="width: 70px; height: 90px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); flex-shrink: 0;">
               <div style="flex: 1; min-width: 0; text-align: left; padding-right: 28px;">
                 <span style="display: block; font-weight: 600; color: var(--gold); font-size: 1.05rem; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${r.product_name}</span>
-                <p style="margin: 0 0 5px 0; font-size: 0.9rem; opacity: 0.9;">Size: <strong>${r.size}</strong> &bull; <strong style="color: var(--gold);">₹${r.price}</strong></p>
+                <p style="margin: 0 0 5px 0; font-size: 0.9rem; opacity: 0.9;">Size/Qty: <strong>${r.size}</strong> &bull; <strong style="color: var(--gold);">₹${r.price * (r.size.match(/\| Qty: (\d+)/) ? parseInt(r.size.match(/\| Qty: (\d+)/)[1], 10) : 1)}</strong></p>
                 <div><span style="font-size: 0.8rem; opacity: 0.7;">Status: </span>${statusText}</div>
                 ${extraInfo}
               </div>

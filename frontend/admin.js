@@ -548,7 +548,7 @@ function loadRequests() {
       let cleanPhone = (r.user_phone || '').replace(/[^0-9]/g, '');
       if (cleanPhone.length === 10) cleanPhone = '91' + cleanPhone;
 
-      let waMsg = encodeURIComponent(`Hello ${r.user_name || 'Valued Client'},\n\nGreetings from AZ Fashion! ✨\nYour request for exclusive piece "${r.product_name}" (Size: ${r.size}) has been APPROVED and is reserved for you.\n\nPlease visit our boutique website to complete your order:\n${window.location.origin}\n\nThank you!`);
+      let waMsg = encodeURIComponent(`Hello ${r.user_name || 'Valued Client'},\n\nGreetings from AZ Fashion! ✨\nYour request for exclusive piece "${r.product_name}" (Size: ${r.size}) has been APPROVED and is reserved for you.\n⚠️ Note: This reservation is valid for 24 hours only.\n\nPlease visit our boutique website to complete your order:\n${window.location.origin}\n\nThank you!`);
       let waLink = cleanPhone ? `https://wa.me/${cleanPhone}?text=${waMsg}` : '';
 
       let notifyBtn = '';

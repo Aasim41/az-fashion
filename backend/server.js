@@ -750,10 +750,14 @@ app.post('/api/razorpay/verify', async (req, res) => {
                   else sizesArr = p.sizes || [];
                   
                   let modified = false;
+                  const sizeName = r.size.split(' | Qty: ')[0];
+                  const qtyMatch = r.size.match(/\| Qty: (\d+)/);
+                  const reqQty = qtyMatch ? parseInt(qtyMatch[1], 10) : 1;
+                  
                   sizesArr = sizesArr.map(s => {
-                    if (s.name === r.size) {
+                    if (s.name === sizeName) {
                       modified = true;
-                      return { ...s, stock: Math.max(0, s.stock - 1) };
+                      return { ...s, stock: Math.max(0, s.stock - reqQty) };
                     }
                     return s;
                   });
