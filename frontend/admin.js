@@ -245,7 +245,7 @@ document.getElementById('adminLoginForm').addEventListener('submit', async (e) =
 
 
 // Dashboard Analytics
-let chartInstance = null;
+
 async function fetchAnalytics() {
   try {
     const response = await fetch('/api/admin/analytics', { headers: getAuthHeaders() });
@@ -268,38 +268,7 @@ async function fetchAnalytics() {
       `).join('');
       topEl.innerHTML = topHtml || '<p style="color:gray;">No requests yet.</p>';
     }
-    
-    // Chart
-    const canvas = document.getElementById('revenueChart');
-    if (canvas && typeof Chart !== 'undefined') {
-      const ctx = canvas.getContext('2d');
-      if (chartInstance) chartInstance.destroy();
-      
-      chartInstance = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-          datasets: [{
-            label: 'Revenue (₹)',
-            data: data.monthlyData,
-            borderColor: '#D4AF37',
-            backgroundColor: 'rgba(212, 175, 55, 0.1)',
-            borderWidth: 2,
-            fill: true,
-            tension: 0.4
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.5)' } },
-            x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.5)' } }
-          }
-        }
-      });
-    }
+
   } catch(e) { console.error('Analytics Error:', e); }
 }
 
