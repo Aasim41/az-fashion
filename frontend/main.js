@@ -1371,9 +1371,9 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
           
           let extraInfo = '';
           if (r.status === 'declined') {
-            statusText = `<span style="color: #f44336; font-weight: 600;">DECLINED</span>`;
+            statusText = `<span style="color: #f44336; font-weight: 600;">EXPIRED / DECLINED</span>`;
             extraInfo = `<div style="margin-top: 10px; font-size: 0.85rem; color: #ff9800; line-height: 1.4;">
-              We sincerely apologize, but this exclusive piece is currently out of stock. Join our <a href="https://chat.whatsapp.com/IivXOd4K7kx1tK72XAdbZa" target="_blank" style="color: #4caf50; text-decoration: underline; font-weight: bold;">WhatsApp Community</a> to get first access to our huge collection along with exclusive rates.
+              This reservation has expired (24h limit) or been declined. Join our <a href="https://chat.whatsapp.com/IivXOd4K7kx1tK72XAdbZa" target="_blank" style="color: #4caf50; text-decoration: underline; font-weight: bold;">WhatsApp Community</a> to stay updated on restocks!
             </div>`;
           }
 

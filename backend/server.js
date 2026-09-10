@@ -669,11 +669,14 @@ app.get('/api/admin/requests', authenticateAdmin, async (req, res) => {
 app.post('/api/requests/:id/approve', authenticateAdmin, async (req, res) => {
   try {
     const requestId = req.params.id;
-    const { data: reqData, error } = await supabase.from('requests').update({ status: 'available' }).eq('id', requestId).select().single();
-    if (error) throw error;
+    const { data: reqData, error: fetchErr } = await supabase.from('requests').select('color').eq('id', requestId).single();
+    if (fetchErr) throw fetchErr;
     
-    
+    let baseColor = (reqData.color || '').split(' | Approved:')[0];
+    const newColor = `${baseColor} | Approved:${Date.now()}`;
 
+    const { error } = await supabase.from('requests').update({ status: 'available', color: newColor }).eq('id', requestId);
+    if (error) throw error;
     res.json({ message: 'Request approved and is now available for payment' });
   } catch (err) {
     console.error('Error approving request:', err);

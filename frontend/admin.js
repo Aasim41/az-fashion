@@ -555,7 +555,7 @@ function loadRequests() {
       if(r.status === 'paid') statusBadge = '<span style="color:#2196f3; font-weight:bold;">PAID (Processing)</span>';
       if(r.status === 'shipped') statusBadge = '<span style="color:#9c27b0; font-weight:bold;">SHIPPED / IN TRANSIT</span>';
       if(r.status === 'delivered') statusBadge = '<span style="color:#4caf50; font-weight:bold;">DELIVERED</span>';
-      if(r.status === 'declined') statusBadge = '<span style="color:#f44336; font-weight:bold;">DECLINED</span>';
+      if(r.status === 'declined') statusBadge = '<span style="color:#f44336; font-weight:bold;">EXPIRED / DECLINED</span>';
 
       let cleanPhone = (r.user_phone || '').replace(/[^0-9]/g, '');
       if (cleanPhone.length === 10) cleanPhone = '91' + cleanPhone;
