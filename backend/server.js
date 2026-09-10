@@ -16,6 +16,9 @@ const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'az_luxury_fashion_jwt_production_secret_2026';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 
+// Trust Render's proxy so rate limiting uses real client IPs, not the proxy IP
+app.set('trust proxy', 1);
+
 // 1. Security Headers via Helmet
 app.use(helmet({
   contentSecurityPolicy: false,
@@ -29,14 +32,14 @@ app.use(express.json({ limit: '5mb' }));
 // 3. Brute Force & Rate Limiting Protection
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // 100 auth requests per IP per 15 min
+  max: 100, // 100 auth requests per real IP per 15 min
   message: { error: 'Too many authentication attempts. Please try again in 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5000, // 5000 requests per 15 min (generous for polling + UptimeRobot)
+  max: 1000, // 1000 requests per real user IP per 15 min (not shared across all users)
   standardHeaders: true,
   legacyHeaders: false,
 });
