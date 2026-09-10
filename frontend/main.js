@@ -374,21 +374,19 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
         
         const loopedData = [...data, ...data];
         loopedData.forEach(item => {
-          const imgUrl = item.image_url || '/images/col_chikankari.png';
-
-          // Map collection name to local fallback image
-          const fallbackMap = {
+          // Always use local bundled images for known categories
+          const imageMap = {
             'Daily Wear': '/images/col_daily.png',
             'Party Wear': '/images/col_party.png',
             'Lucknow Chikankari': '/images/col_chikankari.png',
             'Pakistani Suits': '/images/col_pakistani.png',
           };
-          const fallback = fallbackMap[item.name] || '/images/col_daily.png';
+          const imgUrl = imageMap[item.name] || item.image_url || '/images/col_daily.png';
 
           const card = document.createElement('div');
           card.className = 'collection-card-3d magnetic';
           card.innerHTML = `
-            <img src="${imgUrl}" alt="${item.name}" onerror="this.onerror=null;this.src='${fallback}'">
+            <img src="${imgUrl}" alt="${item.name}" onerror="this.onerror=null;this.src='/images/col_daily.png'">
             <div class="card-3d-overlay">
               <h3>${item.name}</h3>
               <p>${item.description}</p>
