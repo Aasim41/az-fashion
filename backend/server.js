@@ -694,6 +694,30 @@ app.post('/api/requests/:id/decline', authenticateAdmin, async (req, res) => {
   }
 });
 
+
+// 19. Admin: Mark Shipped
+app.post('/api/admin/requests/:id/shipped', authenticateAdmin, async (req, res) => {
+  try {
+    const { courier, tracking_id } = req.body;
+    if (!courier || !tracking_id) return res.status(400).json({ error: 'Tracking data required' });
+    const { data: reqData } = await supabase.from('requests').select('color').eq('id', req.params.id).single();
+    let baseColor = (reqData.color || '').split(' | Courier: ')[0];
+    const newColor = `${baseColor} | Courier: ${courier} | Track: ${tracking_id}`;
+    const { error } = await supabase.from('requests').update({ status: 'shipped', color: newColor }).eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ message: 'Shipped' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Admin: Mark Delivered
+app.post('/api/admin/requests/:id/delivered', authenticateAdmin, async (req, res) => {
+  try {
+    const { error } = await supabase.from('requests').update({ status: 'delivered' }).eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ message: 'Delivered' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // 19. Real Razorpay Create Order
 app.post('/api/razorpay/create-order', async (req, res) => {
   const { amount } = req.body;

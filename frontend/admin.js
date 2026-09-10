@@ -552,7 +552,9 @@ function loadRequests() {
       let statusBadge = r.status;
       if(r.status === 'pending') statusBadge = '<span style="color:#ff9800; font-weight:bold;">PENDING</span>';
       if(r.status === 'available') statusBadge = '<span style="color:#4caf50; font-weight:bold;">AVAILABLE (Awaiting Pay)</span>';
-      if(r.status === 'paid') statusBadge = '<span style="color:#2196f3; font-weight:bold;">PAID (Order Confirmed)</span>';
+      if(r.status === 'paid') statusBadge = '<span style="color:#2196f3; font-weight:bold;">PAID (Processing)</span>';
+      if(r.status === 'shipped') statusBadge = '<span style="color:#9c27b0; font-weight:bold;">SHIPPED / IN TRANSIT</span>';
+      if(r.status === 'delivered') statusBadge = '<span style="color:#4caf50; font-weight:bold;">DELIVERED</span>';
       if(r.status === 'declined') statusBadge = '<span style="color:#f44336; font-weight:bold;">DECLINED</span>';
 
       let cleanPhone = (r.user_phone || '').replace(/[^0-9]/g, '');
@@ -581,6 +583,40 @@ function loadRequests() {
         `;
       } else if (r.status === 'available') {
         actionBtns = notifyBtn;
+      } else if (r.status === 'paid') {
+        actionBtns = `
+          <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+            <button class="btn-action" onclick="openTrackingModal(${r.id}, '${cleanPhone}', '${encodeURIComponent(r.product_name || '')}', '${encodeURIComponent(r.user_name || '')}')" style="background:#2196f3; border:none; color:white;">Add Tracking</button>
+          </div>
+        `;
+      } else if (r.status === 'shipped') {
+        const trackMatch = (r.color || '').match(/\| Courier: (.*?) \| Track: (.*)/);
+        const courier = trackMatch ? trackMatch[1] : 'Courier';
+        const trackId = trackMatch ? trackMatch[2] : 'N/A';
+        const msg = encodeURIComponent(`Hello ${r.user_name || 'Client'},
+
+Great news from AZ Fashion! ✨
+Your order for "${r.product_name}" has been DISPATCHED.
+
+🚚 Courier: ${courier}
+📦 Tracking ID: ${trackId}
+
+Track your package here: https://17track.net/en/track?nums=${trackId}
+
+Estimated delivery is within 10 days. Thank you for choosing us!`);
+        const waLinkTrack = cleanPhone ? `https://wa.me/${cleanPhone}?text=${msg}` : '';
+        
+        actionBtns = `
+          <div style="display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 5px;">
+            <button class="btn-action" onclick="markDelivered(${r.id})" style="background:#4caf50; border:none; color:white;">Mark Delivered</button>
+          </div>
+          <a href="${waLinkTrack}" target="_blank" class="btn-action" style="background: #25D366; color: white; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 4px; font-size: 0.8rem;" title="Send Tracking via WhatsApp">
+            <i class="fab fa-whatsapp"></i> Send Tracking
+          </a>
+          <div style="font-size: 0.8rem; margin-top:5px; opacity: 0.8;">via ${courier} (#${trackId})</div>
+        `;
+      } else if (r.status === 'delivered') {
+        actionBtns = `<span style="color:#4caf50; font-size: 0.85rem;"><i class="fas fa-check-circle"></i> Completed</span>`;
       }
 
       let imgSrc = r.image_url || '/images/col_daily.png';
