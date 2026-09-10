@@ -44,8 +44,12 @@ const generalLimiter = rateLimit({
   legacyHeaders: false,
 });
 app.use('/api/', generalLimiter);
-app.use('/api/auth/', authLimiter);
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/reset-password', authLimiter);
 app.use('/api/admin/login', authLimiter);
+// Note: /api/auth/verify-session is intentionally omitted from authLimiter because it is polled by clients.
+
 
 // Prevent proxy, carrier NAT, and CDN caching on dynamic API routes
 app.use('/api/', (req, res, next) => {

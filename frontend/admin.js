@@ -5,10 +5,8 @@ function getAuthHeaders() {
 
 function handleAuthError(res) {
   if (res.status === 401 || res.status === 403) {
-    sessionStorage.removeItem('az_admin_token');
+    if (typeof window.logoutAdmin === 'function') window.logoutAdmin();
     alert('Admin session expired or unauthorized. Please log in.');
-    document.getElementById('adminDashboard').style.display = 'none';
-    document.getElementById('adminLogin').style.display = 'flex';
     return true;
   }
   return false;
@@ -83,7 +81,10 @@ function checkNewRequests() {
   fetch('/api/admin/requests', {
     headers: getAuthHeaders()
   }).then(async r => {
-    if (r.status === 401 || r.status === 403) return;
+    if (r.status === 401 || r.status === 403) {
+      if (typeof window.logoutAdmin === 'function') window.logoutAdmin();
+      return;
+    }
     const reqs = await r.json();
     if (!Array.isArray(reqs)) return;
 
