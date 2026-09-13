@@ -1055,23 +1055,40 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
     // Render Colors
     const colorContainerWrap = document.getElementById('pdColorContainer');
     const colorsContainer = document.getElementById('pdColors');
+    
+    // Store original gallery to restore or filter from
+    let allImages = prod.images || [];
+    if (!allImages || allImages.length === 0) {
+      allImages = [prod.image_url || '/images/col_daily.png'];
+    }
+    
     if (colorContainerWrap && colorsContainer) {
       let colorsArr = [];
       if (prod.colors) {
         try { colorsArr = typeof prod.colors === 'string' ? JSON.parse(prod.colors) : prod.colors; } catch(e) {}
       }
-      colorsArr = colorsArr.filter(c => c && c.toLowerCase() !== 'default');
+      
+      // If it's the old flat array format, we just map it.
+      // If it's the new object format, we map it too.
+      colorsArr = colorsArr.filter(c => {
+        if (typeof c === 'string') return c && c.toLowerCase() !== 'default';
+        if (typeof c === 'object' && c.name) return c.name.toLowerCase() !== 'default';
+        return false;
+      });
       
       colorsContainer.innerHTML = '';
       if (colorsArr.length > 0) {
         colorContainerWrap.style.display = 'block';
-        colorsArr.forEach((c, idx) => {
+        colorsArr.forEach((cObj, idx) => {
+          const isComplex = typeof cObj === 'object';
+          const cName = isComplex ? cObj.name : cObj;
+          
           const btn = document.createElement('button');
           btn.className = 'color-btn';
           btn.style.backgroundColor = 'transparent';
           btn.style.border = '1px solid rgba(255,255,255,0.4)';
-          btn.title = c;
-          btn.innerText = c;
+          btn.title = cName;
+          btn.innerText = cName;
           btn.style.width = 'auto';
           btn.style.minWidth = '50px';
           btn.style.padding = '5px 15px';
@@ -1088,12 +1105,35 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
             btn.classList.add('selected');
             btn.style.borderColor = 'var(--gold)';
             btn.style.color = 'var(--gold)';
-            selectedColor = c;
+            selectedColor = cName;
+            
+            // Re-build gallery based on the color's images
+            if (isComplex && cObj.count > 0 && cObj.index >= 0) {
+              images = allImages.slice(cObj.index, cObj.index + cObj.count);
+            } else {
+              images = allImages;
+            }
+            
+            // Re-render thumbnails for the active gallery
+            if (pdThumbnailsList) {
+              pdThumbnailsList.innerHTML = '';
+              if (images.length > 1) {
+                images.forEach((img, i) => {
+                  const thumb = document.createElement('img');
+                  thumb.src = img;
+                  thumb.style.cssText = 'width: 55px; height: 70px; object-fit: cover; border-radius: 6px; cursor: pointer; border: 2px solid rgba(255,255,255,0.2); opacity: 0.5; transition: 0.2s; flex-shrink: 0;';
+                  thumb.onclick = () => showImage(i);
+                  pdThumbnailsList.appendChild(thumb);
+                });
+              }
+            }
             
             // Jump to the image index for this color
-            if (images.length > 0) {
+            if (!isComplex && images.length > 0) {
               const targetImgIdx = Math.min(idx, images.length - 1);
               showImage(targetImgIdx);
+            } else {
+              showImage(0); // If complex, we sliced the gallery, so start at 0
             }
           };
           colorsContainer.appendChild(btn);

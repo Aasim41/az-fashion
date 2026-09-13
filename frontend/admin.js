@@ -412,6 +412,35 @@ document.getElementById('editImages')?.addEventListener('change', function() {
 });
 
 // Add Product (Multiple images support)
+
+function createColorVariantRow(containerId) {
+  const container = document.getElementById(containerId);
+  const row = document.createElement('div');
+  row.className = 'color-variant-row';
+  row.style.cssText = 'display: flex; flex-direction: column; gap: 10px; background: rgba(255,255,255,0.02); padding: 10px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.1); position: relative;';
+  
+  row.innerHTML = `
+    <button type="button" onclick="this.parentElement.remove()" style="position: absolute; top: 10px; right: 10px; background: none; border: none; color: #ff5252; cursor: pointer; font-weight: bold;">X</button>
+    <div>
+      <label style="color: var(--text-muted); display: block; margin-bottom: 5px; font-size: 0.9rem;">Color Name (e.g. Red)</label>
+      <input type="text" class="var-name" placeholder="Color Name" style="width: 100%; padding: 8px; border-radius: 5px; border: none; background: rgba(0,0,0,0.5); color: white;" required>
+    </div>
+    <div>
+      <label style="color: var(--text-muted); display: block; margin-bottom: 5px; font-size: 0.9rem;">Images for this Color</label>
+      <input type="file" class="var-files" accept="image/*" multiple style="color: white; font-size: 0.85rem;" required>
+    </div>
+  `;
+  container.appendChild(row);
+}
+
+document.getElementById('addColorVariantBtn')?.addEventListener('click', () => {
+  createColorVariantRow('addColorVariantContainer');
+});
+
+document.getElementById('editColorVariantBtn')?.addEventListener('click', () => {
+  createColorVariantRow('editColorVariantContainer');
+});
+
 document.getElementById('addProductForm').addEventListener('submit', (e) => {
   e.preventDefault();
   
@@ -422,16 +451,28 @@ document.getElementById('addProductForm').addEventListener('submit', (e) => {
   formData.append('collection_id', document.getElementById('addCollection').value);
   formData.append('sizes', extractSizes('addSizeContainer'));
   
-  const colorsVal = document.getElementById('addColors').value;
-  formData.append('colors', colorsVal);
+  
+  const variants = document.querySelectorAll('#addColorVariantContainer .color-variant-row');
+  if (variants.length === 0) return alert("Please add at least one color variant and its images.");
+  
+  let colorsArr = [];
+  let fileCount = 0;
+  
+  variants.forEach(row => {
+    const name = row.querySelector('.var-name').value.trim();
+    const files = row.querySelector('.var-files').files;
+    if (files.length > 0) {
+      colorsArr.push({ name: name || 'Default', index: fileCount, count: files.length });
+      for(let i = 0; i < files.length; i++) {
+        formData.append('images', files[i]);
+        fileCount++;
+      }
+    }
+  });
+  
+  if (fileCount === 0) return alert("Please select images for your variants.");
+  formData.append('colors', JSON.stringify(colorsArr));
 
-  const files = document.getElementById('addImages').files;
-  if (!files || files.length === 0) {
-    return alert("Please select at least one product image.");
-  }
-  for (let i = 0; i < files.length; i++) {
-    formData.append('images', files[i]);
-  }
 
   fetch('/api/admin/products', {
     method: 'POST',
@@ -494,15 +535,31 @@ document.getElementById('editProductForm').addEventListener('submit', (e) => {
   formData.append('collection_id', document.getElementById('editCollection').value);
   formData.append('sizes', extractSizes('editSizeContainer'));
   
-  const colorsVal = document.getElementById('editColors').value;
-  formData.append('colors', colorsVal);
-
-  const files = document.getElementById('editImages').files;
-  if (files && files.length > 0) {
-    for (let i = 0; i < files.length; i++) {
-      formData.append('images', files[i]);
+  
+  const variants = document.querySelectorAll('#editColorVariantContainer .color-variant-row');
+  if (variants.length > 0) {
+    let colorsArr = [];
+    let fileCount = 0;
+    let validFiles = false;
+    
+    variants.forEach(row => {
+      const name = row.querySelector('.var-name').value.trim();
+      const files = row.querySelector('.var-files').files;
+      if (files.length > 0) {
+        validFiles = true;
+        colorsArr.push({ name: name || 'Default', index: fileCount, count: files.length });
+        for(let i = 0; i < files.length; i++) {
+          formData.append('images', files[i]);
+          fileCount++;
+        }
+      }
+    });
+    
+    if (validFiles) {
+      formData.append('colors', JSON.stringify(colorsArr));
     }
   }
+
 
   fetch('/api/admin/products/' + id, {
     method: 'PUT',

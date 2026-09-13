@@ -219,9 +219,13 @@ app.post('/api/admin/products', authenticateAdmin, upload.array('images', 10), a
       catch(e) { sizesArr = sizes.split(',').map(s => ({ name: s.trim(), stock: 10 })); }
     }
     
-    let colorsArr = ['Default'];
+    let colorsData = ['Default'];
     if (req.body.colors && req.body.colors.trim() !== '') {
-      colorsArr = req.body.colors.split(',').map(c => c.trim()).filter(c => c !== '');
+      try {
+        colorsData = JSON.parse(req.body.colors);
+      } catch (e) {
+        colorsData = req.body.colors.split(',').map(c => c.trim()).filter(c => c !== '');
+      }
     }
 
     const insertData = {
@@ -231,7 +235,7 @@ app.post('/api/admin/products', authenticateAdmin, upload.array('images', 10), a
       image_url,
       collection_id: collection_id ? parseInt(collection_id, 10) : null,
       sizes: JSON.stringify(sizesArr),
-      colors: JSON.stringify(colorsArr),
+      colors: JSON.stringify(colorsData),
       reviews: JSON.stringify([])
     };
 
@@ -276,7 +280,11 @@ app.put('/api/admin/products/:id', authenticateAdmin, upload.array('images', 10)
     };
 
     if (colors && colors.trim() !== '') {
-      updateData.colors = JSON.stringify(colors.split(',').map(c => c.trim()).filter(c => c !== ''));
+      try {
+        updateData.colors = JSON.stringify(JSON.parse(colors));
+      } catch (e) {
+        updateData.colors = JSON.stringify(colors.split(',').map(c => c.trim()).filter(c => c !== ''));
+      }
     } else if (colors === '') {
       updateData.colors = JSON.stringify([]);
     }

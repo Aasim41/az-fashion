@@ -86,8 +86,11 @@
               </select>
             </div>
             
-            <label style="color: var(--text-muted); display: block; margin-bottom: 5px;">Available Colors (Comma separated, e.g. Red, Blue, Green)</label>
-            <input type="text" id="addColors" placeholder="Leave empty if none" style="margin-bottom: 20px; width: 100%; padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;">
+            <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px;">
+              <label style="color: var(--gold); display: block; margin-bottom: 10px; font-weight: bold;">Color Variants & Images</label>
+              <div id="addColorVariantContainer" style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 15px;"></div>
+              <button type="button" id="addColorVariantBtn" style="background: transparent; border: 1px dashed var(--gold); color: var(--gold); padding: 8px; border-radius: 5px; cursor: pointer; width: 100%;">+ Add Color Variant</button>
+            </div>
             
             <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
               <label style="color: var(--gold); display: block; margin-bottom: 10px; font-weight: bold;">Inventory (Sizes & Stock)</label>
@@ -95,12 +98,6 @@
               <button type="button" id="addSizeRowBtn" style="background: transparent; border: 1px dashed var(--gold); color: var(--gold); padding: 8px; border-radius: 5px; cursor: pointer; width: 100%;">+ Add Size / Stock</button>
             </div>
 
-            
-            <div style="margin-top: 10px;">
-              <label style="color: var(--text-muted); display: block; margin-bottom: 5px;">Product Images (Select 1 or more photos)</label>
-              <input type="file" id="addImages" accept="image/*" multiple style="color: white;" required>
-              <div id="addImagePreview" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;"></div>
-            </div>
             
             <button type="submit" style="width: 200px; margin-top: 10px; padding: 10px; background: var(--gold); border: none; font-weight: bold; border-radius: 5px; cursor: pointer;">Upload Product</button>
           </form>
@@ -177,20 +174,17 @@
           </select>
         </div>
         
-        <label style="color: var(--text-muted); display: block; margin-bottom: 5px;">Available Colors (Comma separated, e.g. Red, Blue, Green)</label>
-        <input type="text" id="editColors" placeholder="Leave empty if none" style="margin-bottom: 20px; width: 100%; padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;">
+        <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px;">
+          <label style="color: var(--gold); display: block; margin-bottom: 10px; font-weight: bold;">Update Color Variants & Images</label>
+          <p style="color: rgba(255,255,255,0.6); font-size: 0.85rem; margin-bottom: 10px;">Leave entirely empty to keep current colors and images.</p>
+          <div id="editColorVariantContainer" style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 15px;"></div>
+          <button type="button" id="editColorVariantBtn" style="background: transparent; border: 1px dashed var(--gold); color: var(--gold); padding: 8px; border-radius: 5px; cursor: pointer; width: 100%;">+ Override Color Variants</button>
+        </div>
         
-        <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+        <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px;">
           <label style="color: var(--gold); display: block; margin-bottom: 10px; font-weight: bold;">Inventory (Sizes & Stock)</label>
           <div id="editSizeContainer" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px;"></div>
           <button type="button" id="editSizeRowBtn" style="background: transparent; border: 1px dashed var(--gold); color: var(--gold); padding: 8px; border-radius: 5px; cursor: pointer; width: 100%;">+ Add Size / Stock</button>
-        </div>
-
-        
-        <div style="margin-top: 10px;">
-          <label style="color: var(--text-muted); display: block; margin-bottom: 5px;">Update Images (Select 1 or more photos, or leave empty to keep current)</label>
-          <input type="file" id="editImages" accept="image/*" multiple style="color: white;">
-          <div id="editImagePreview" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;"></div>
         </div>
         
         <button type="submit" style="width: 100%; padding: 10px; background: var(--gold); border: none; font-weight: bold; border-radius: 5px; cursor: pointer;">Save Changes</button>
