@@ -1,3 +1,4 @@
+console.log("Admin Dashboard Loaded - Version 4");
 function getAuthHeaders() {
   const token = sessionStorage.getItem('az_admin_token');
   return token ? { 'Authorization': `Bearer ${token}` } : {};
