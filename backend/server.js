@@ -218,6 +218,11 @@ app.post('/api/admin/products', authenticateAdmin, upload.array('images', 10), a
       try { sizesArr = JSON.parse(sizes); } 
       catch(e) { sizesArr = sizes.split(',').map(s => ({ name: s.trim(), stock: 10 })); }
     }
+    
+    let colorsArr = ['Default'];
+    if (req.body.colors && req.body.colors.trim() !== '') {
+      colorsArr = req.body.colors.split(',').map(c => c.trim()).filter(c => c !== '');
+    }
 
     const insertData = {
       name,
@@ -226,7 +231,7 @@ app.post('/api/admin/products', authenticateAdmin, upload.array('images', 10), a
       image_url,
       collection_id: collection_id ? parseInt(collection_id, 10) : null,
       sizes: JSON.stringify(sizesArr),
-      colors: JSON.stringify(['Default']),
+      colors: JSON.stringify(colorsArr),
       reviews: JSON.stringify([])
     };
 
@@ -255,7 +260,7 @@ app.delete('/api/admin/products/:id', authenticateAdmin, async (req, res) => {
 // 5. Admin: Update Product (Multiple images support with Supabase Storage)
 app.put('/api/admin/products/:id', authenticateAdmin, upload.array('images', 10), async (req, res) => {
   try {
-    const { name, description, price, collection_id, sizes } = req.body;
+    const { name, description, price, collection_id, sizes, colors } = req.body;
     let sizesArr = [];
     if (sizes) {
       try { sizesArr = JSON.parse(sizes); } 
@@ -269,6 +274,12 @@ app.put('/api/admin/products/:id', authenticateAdmin, upload.array('images', 10)
       collection_id: collection_id ? parseInt(collection_id, 10) : null,
       sizes: JSON.stringify(sizesArr)
     };
+
+    if (colors && colors.trim() !== '') {
+      updateData.colors = JSON.stringify(colors.split(',').map(c => c.trim()).filter(c => c !== ''));
+    } else if (colors === '') {
+      updateData.colors = JSON.stringify([]);
+    }
 
     const files = req.files || (req.file ? [req.file] : []);
     if (files.length > 0) {

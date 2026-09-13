@@ -1052,6 +1052,57 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
 
     showImage(0);
     
+    // Render Colors
+    const colorContainerWrap = document.getElementById('pdColorContainer');
+    const colorsContainer = document.getElementById('pdColors');
+    if (colorContainerWrap && colorsContainer) {
+      let colorsArr = [];
+      if (prod.colors) {
+        try { colorsArr = typeof prod.colors === 'string' ? JSON.parse(prod.colors) : prod.colors; } catch(e) {}
+      }
+      colorsArr = colorsArr.filter(c => c && c.toLowerCase() !== 'default');
+      
+      colorsContainer.innerHTML = '';
+      if (colorsArr.length > 0) {
+        colorContainerWrap.style.display = 'block';
+        colorsArr.forEach((c, idx) => {
+          const btn = document.createElement('button');
+          btn.className = 'color-btn';
+          btn.style.backgroundColor = 'transparent';
+          btn.style.border = '1px solid rgba(255,255,255,0.4)';
+          btn.title = c;
+          btn.innerText = c;
+          btn.style.width = 'auto';
+          btn.style.minWidth = '50px';
+          btn.style.padding = '5px 15px';
+          btn.style.borderRadius = '20px';
+          btn.style.color = 'white';
+          btn.style.cursor = 'pointer';
+          
+          btn.onclick = () => {
+            document.querySelectorAll('.color-btn').forEach(b => {
+                b.classList.remove('selected');
+                b.style.borderColor = 'rgba(255,255,255,0.4)';
+                b.style.color = 'white';
+            });
+            btn.classList.add('selected');
+            btn.style.borderColor = 'var(--gold)';
+            btn.style.color = 'var(--gold)';
+            selectedColor = c;
+            
+            // Jump to the image index for this color
+            if (images.length > 0) {
+              const targetImgIdx = Math.min(idx, images.length - 1);
+              showImage(targetImgIdx);
+            }
+          };
+          colorsContainer.appendChild(btn);
+        });
+      } else {
+        colorContainerWrap.style.display = 'none';
+      }
+    }
+
     // Render Sizes
     const sizesContainer = document.getElementById('pdSizes');
     sizesContainer.innerHTML = '';
@@ -1173,6 +1224,13 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
   const pdRequestBtn = document.getElementById('pdRequestBtn');
   if (pdRequestBtn) {
     pdRequestBtn.addEventListener('click', () => {
+      let colorsArr = [];
+      if (selectedProduct && selectedProduct.colors) {
+        try { colorsArr = typeof selectedProduct.colors === 'string' ? JSON.parse(selectedProduct.colors) : selectedProduct.colors; } catch(e) {}
+      }
+      colorsArr = colorsArr.filter(c => c && c.toLowerCase() !== 'default');
+      
+      if (colorsArr.length > 0 && !selectedColor) return alert('Please select a color.');
       if (!selectedSize) return alert('Please select a size.');
       submitRequest();
     });
@@ -1190,7 +1248,7 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
         user_id: currentUser.id,
         product_id: selectedProduct.id,
         size: selectedQuantity > 1 ? `${selectedSize} | Qty: ${selectedQuantity}` : selectedSize,
-        color: selectedProduct.colors ? selectedProduct.colors[0] : 'Default'
+        color: selectedColor || 'Default'
       })
     }).then(r => {
       if (r.status === 401) {

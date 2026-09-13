@@ -422,6 +422,9 @@ document.getElementById('addProductForm').addEventListener('submit', (e) => {
   formData.append('collection_id', document.getElementById('addCollection').value);
   formData.append('sizes', extractSizes('addSizeContainer'));
   
+  const colorsVal = document.getElementById('addColors').value;
+  formData.append('colors', colorsVal);
+
   const files = document.getElementById('addImages').files;
   if (!files || files.length === 0) {
     return alert("Please select at least one product image.");
@@ -457,6 +460,12 @@ window.openEditProduct = (encodedProduct) => {
   document.getElementById('editPrice').value = p.price;
   document.getElementById('editCollection').value = p.collection_id || '';
   
+  if (p.colors && Array.isArray(p.colors)) {
+    document.getElementById('editColors').value = p.colors.join(', ');
+  } else {
+    document.getElementById('editColors').value = '';
+  }
+
   const sizeCont = document.getElementById('editSizeContainer');
   if (sizeCont) sizeCont.innerHTML = '';
   let sizesArr = [];
@@ -485,6 +494,9 @@ document.getElementById('editProductForm').addEventListener('submit', (e) => {
   formData.append('collection_id', document.getElementById('editCollection').value);
   formData.append('sizes', extractSizes('editSizeContainer'));
   
+  const colorsVal = document.getElementById('editColors').value;
+  formData.append('colors', colorsVal);
+
   const files = document.getElementById('editImages').files;
   if (files && files.length > 0) {
     for (let i = 0; i < files.length; i++) {

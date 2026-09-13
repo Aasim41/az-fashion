@@ -75,13 +75,19 @@
           <form id="addProductForm" style="display: flex; flex-direction: column; gap: 15px;">
             <input type="text" id="addName" placeholder="Product Name" style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required>
             <textarea id="addDesc" placeholder="Product Description" rows="3" style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required></textarea>
-            <div style="display: flex; gap: 15px;">
+            <div style="display: flex; gap: 15px; margin-bottom: 20px;">
               <input type="number" id="addPrice" placeholder="Price (INR)" style="flex: 1; padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required>
               <select id="addCollection" style="flex: 1; padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required>
-                <option value="" disabled selected>Select Collection Category</option>
-                <!-- Populated by JS -->
+                <option value="">Select Category</option>
+                <option value="1">Daily Wear</option>
+                <option value="2">Party Wear</option>
+                <option value="3">Lucknow Chikankari</option>
+                <option value="4">Pakistani Suits</option>
               </select>
             </div>
+            
+            <label style="color: var(--text-muted); display: block; margin-bottom: 5px;">Available Colors (Comma separated, e.g. Red, Blue, Green)</label>
+            <input type="text" id="addColors" placeholder="Leave empty if none" style="margin-bottom: 20px; width: 100%; padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;">
             
             <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
               <label style="color: var(--gold); display: block; margin-bottom: 10px; font-weight: bold;">Inventory (Sizes & Stock)</label>
@@ -163,13 +169,16 @@
         <input type="hidden" id="editId">
         <input type="text" id="editName" placeholder="Product Name" style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required>
         <textarea id="editDesc" placeholder="Product Description" rows="3" style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required></textarea>
-        <div style="display: flex; gap: 15px;">
+        <div style="display: flex; gap: 15px; margin-bottom: 20px;">
           <input type="number" id="editPrice" placeholder="Price (INR)" style="flex: 1; padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required>
           <select id="editCollection" style="flex: 1; padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required>
             <option value="" disabled selected>Select Collection Category</option>
             <!-- Populated by JS -->
           </select>
         </div>
+        
+        <label style="color: var(--text-muted); display: block; margin-bottom: 5px;">Available Colors (Comma separated, e.g. Red, Blue, Green)</label>
+        <input type="text" id="editColors" placeholder="Leave empty if none" style="margin-bottom: 20px; width: 100%; padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;">
         
         <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
           <label style="color: var(--gold); display: block; margin-bottom: 10px; font-weight: bold;">Inventory (Sizes & Stock)</label>
