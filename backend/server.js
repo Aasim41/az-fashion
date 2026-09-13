@@ -698,6 +698,33 @@ app.post('/api/requests/:id/decline', authenticateAdmin, async (req, res) => {
 });
 
 
+
+// 22. Admin: Delete Review
+app.delete('/api/admin/products/:id/reviews/:index', authenticateAdmin, async (req, res) => {
+  try {
+    const { id, index } = req.params;
+    const idx = parseInt(index, 10);
+    
+    const { data: prod, error } = await supabase.from('products').select('reviews').eq('id', id).single();
+    if (error || !prod) return res.status(404).json({ error: 'Product not found' });
+    
+    let reviews = [];
+    try {
+      reviews = typeof prod.reviews === 'string' ? JSON.parse(prod.reviews) : (prod.reviews || []);
+    } catch(e) {}
+    
+    if (idx < 0 || idx >= reviews.length) return res.status(400).json({ error: 'Invalid review index' });
+    
+    reviews.splice(idx, 1);
+    
+    await supabase.from('products').update({ reviews: JSON.stringify(reviews) }).eq('id', id);
+    res.json({ message: 'Review deleted', reviews });
+  } catch (err) {
+    console.error('Error deleting review:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // 19. Admin: Mark Shipped
 app.post('/api/admin/requests/:id/shipped', authenticateAdmin, async (req, res) => {
   try {

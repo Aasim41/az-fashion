@@ -313,6 +313,7 @@ document.querySelectorAll('.admin-nav-btn[data-tab]').forEach(btn => {
     document.querySelectorAll('.admin-tab').forEach(t => t.style.display = 'none');
     
     btn.classList.add('active');
+    if (btn.dataset.tab === 'reviews') loadReviews();
     const tabName = btn.getAttribute('data-tab');
     document.getElementById('tab-' + tabName).style.display = 'block';
     if (tabName === 'requests') {
@@ -688,5 +689,122 @@ window.declineRequest = (id) => {
   }).catch(err => {
     console.error(err);
     alert('Decline failed');
+  });
+};
+
+
+// ========== REVIEWS MANAGEMENT ==========
+function loadReviews() {
+  fetch('/api/products')
+    .then(r => r.json())
+    .then(products => {
+      const container = document.getElementById('adminReviewsList');
+      if (!container) return;
+      container.innerHTML = '';
+      
+      if (!Array.isArray(products)) return;
+      
+      // Filter products that have reviews
+      const productsWithReviews = products.filter(p => {
+        let reviews = [];
+        try { reviews = typeof p.reviews === 'string' ? JSON.parse(p.reviews) : (p.reviews || []); } catch(e) {}
+        return reviews.length > 0;
+      });
+      
+      if (productsWithReviews.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding: 40px; color: rgba(255,255,255,0.5);"><i class="fas fa-star" style="font-size: 2rem; margin-bottom: 10px; display:block; opacity:0.3;"></i>No reviews yet</div>';
+        return;
+      }
+      
+      productsWithReviews.forEach(p => {
+        let reviews = [];
+        try { reviews = typeof p.reviews === 'string' ? JSON.parse(p.reviews) : (p.reviews || []); } catch(e) {}
+        
+        const avgRating = reviews.length > 0 ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1) : '0';
+        
+        let imgSrc = p.image_url || '/images/col_daily.png';
+        try {
+          if (imgSrc.startsWith('[')) {
+            const arr = JSON.parse(imgSrc);
+            if (Array.isArray(arr) && arr.length > 0) imgSrc = arr[0];
+          }
+        } catch(e) {}
+        
+        const stars = '★'.repeat(Math.round(avgRating)) + '☆'.repeat(5 - Math.round(avgRating));
+        
+        container.innerHTML += `
+          <div onclick="openReviewsDetail(${p.id})" style="display: flex; align-items: center; gap: 15px; padding: 18px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; cursor: pointer; transition: all 0.3s ease; hover: transform: translateY(-2px);" onmouseover="this.style.borderColor='var(--gold)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'; this.style.transform='none';">
+            <img src="${imgSrc}" alt="${p.name}" style="width: 55px; height: 70px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); flex-shrink: 0;">
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-weight: 600; color: white; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${p.name}</div>
+              <div style="color: var(--gold); font-size: 0.9rem; letter-spacing: 2px;">${stars}</div>
+              <div style="font-size: 0.8rem; color: rgba(255,255,255,0.5); margin-top: 2px;">${reviews.length} review${reviews.length !== 1 ? 's' : ''} · Avg: ${avgRating}/5</div>
+            </div>
+            <i class="fas fa-chevron-right" style="color: rgba(255,255,255,0.3); font-size: 0.9rem;"></i>
+          </div>
+        `;
+      });
+    })
+    .catch(err => console.error('Error loading reviews:', err));
+}
+
+window.openReviewsDetail = (productId) => {
+  fetch('/api/products')
+    .then(r => r.json())
+    .then(products => {
+      const p = products.find(prod => prod.id === productId);
+      if (!p) return;
+      
+      let reviews = [];
+      try { reviews = typeof p.reviews === 'string' ? JSON.parse(p.reviews) : (p.reviews || []); } catch(e) {}
+      
+      document.getElementById('reviewsModalTitle').innerText = p.name + ' — Reviews';
+      document.getElementById('reviewsModalSubtitle').innerText = reviews.length + ' review' + (reviews.length !== 1 ? 's' : '') + ' total';
+      
+      const list = document.getElementById('reviewsModalList');
+      list.innerHTML = '';
+      
+      if (reviews.length === 0) {
+        list.innerHTML = '<p style="color: rgba(255,255,255,0.5); text-align:center; padding: 20px;">No reviews for this product.</p>';
+      } else {
+        reviews.forEach((r, idx) => {
+          const stars = '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating);
+          list.innerHTML += `
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 15px; background: rgba(255,255,255,0.04); border-radius: 10px; border: 1px solid rgba(255,255,255,0.06);">
+              <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+                  <span style="font-weight: 600; color: var(--gold);">${r.user}</span>
+                  <span style="color: #ffb300; font-size: 0.85rem; letter-spacing: 1px;">${stars}</span>
+                </div>
+                <div style="font-size: 0.9rem; color: rgba(255,255,255,0.8); line-height: 1.5;">${r.comment}</div>
+              </div>
+              <button onclick="deleteReview(${productId}, ${idx})" style="background: rgba(255,0,0,0.15); border: 1px solid rgba(255,0,0,0.3); color: #ff5252; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; flex-shrink: 0; margin-left: 12px; transition: 0.3s;" onmouseover="this.style.background='rgba(255,0,0,0.3)'" onmouseout="this.style.background='rgba(255,0,0,0.15)'" title="Delete this review">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          `;
+        });
+      }
+      
+      document.getElementById('reviewsDetailModal').style.display = 'flex';
+    });
+};
+
+window.deleteReview = (productId, reviewIndex) => {
+  if (!confirm('Are you sure you want to delete this review? This action cannot be undone.')) return;
+  
+  fetch('/api/admin/products/' + productId + '/reviews/' + reviewIndex, {
+    method: 'DELETE',
+    headers: getAuthHeaders()
+  }).then(async r => {
+    if (handleAuthError(r)) return;
+    const res = await r.json();
+    if (res.error) return alert(res.error);
+    // Refresh both the detail modal and the reviews list
+    openReviewsDetail(productId);
+    loadReviews();
+  }).catch(err => {
+    console.error(err);
+    alert('Failed to delete review.');
   });
 };
