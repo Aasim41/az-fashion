@@ -226,16 +226,27 @@ body.loading {
 .hero-slide {
   position: absolute; top:0; left:0; width: 100%; height: 100%;
   opacity: 0;
-  transition: opacity 1.5s ease-in-out;
+  transition: opacity 2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .hero-slide.active { opacity: 1; z-index: 1; }
+.hero-slide.active .hero-bg-img {
+  animation: kenBurns 12s ease-in-out infinite alternate;
+}
+@keyframes kenBurns {
+  0% { transform: scale(1.0); }
+  100% { transform: scale(1.08); }
+}
 .hero-bg-img {
-  width: 100%; height: 100%; object-fit: contain; background-color: #070707;
-  transform: scale(1.05);
+  width: 100%; height: 100%; object-fit: cover; background-color: #070707;
+  transform: scale(1.02);
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
 }
 .hero-overlay {
   position: absolute; top:0; left:0; width:100%; height:100%;
-  background: linear-gradient(180deg, rgba(7,7,7,0.4) 0%, rgba(7,7,7,1) 100%);
+  background: 
+    linear-gradient(180deg, rgba(7,7,7,0.2) 0%, rgba(7,7,7,0.05) 40%, rgba(7,7,7,0.7) 75%, rgba(7,7,7,1) 100%),
+    radial-gradient(ellipse at center, transparent 50%, rgba(7,7,7,0.5) 100%);
   z-index: 2;
 }
 
@@ -375,7 +386,25 @@ body.loading {
     flex: 0 0 85vw; height: 500px; scroll-snap-align: center; transform: none !important;
   }
 }
-.collection-card-3d img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
+.collection-card-3d img {
+  width: 100%; height: 100%; object-fit: cover;
+  transition: transform 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+  image-rendering: -webkit-optimize-contrast;
+}
+.collection-card-3d:hover img { transform: scale(1.04); }
+.collection-card-3d::after {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  transition: border-color 0.5s ease, box-shadow 0.5s ease;
+  pointer-events: none;
+  z-index: 5;
+}
+.collection-card-3d:hover::after {
+  border-color: rgba(212, 175, 55, 0.3);
+  box-shadow: 0 30px 60px rgba(0,0,0,0.5), inset 0 0 30px rgba(212,175,55,0.05);
+}
 .card-3d-overlay {
   position: absolute; inset: 0;
   background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
@@ -388,7 +417,11 @@ body.loading {
 
 /* Lookbook Slider */
 .lookbook-section { padding: 150px 0; overflow: hidden; }
-.section-heading { font-family: var(--font-serif); font-size: 4rem; margin-bottom: 80px; text-align: center; color: #fff; }
+.section-heading {
+  font-family: var(--font-serif); font-size: 4rem; margin-bottom: 80px; text-align: center; color: #fff;
+  letter-spacing: 3px;
+  text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
 @media (max-width: 768px) { .lookbook-section { padding: 80px 0; } .section-heading { font-size: 2.5rem; margin-bottom: 40px; } }
 
 .lookbook-slider-container {
@@ -418,10 +451,19 @@ body.loading {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.5s ease;
+  transition: transform 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+  image-rendering: -webkit-optimize-contrast;
 }
 .slider-item:hover img {
-  transform: scale(1.03);
+  transform: scale(1.04);
+}
+.slider-item {
+  border-radius: 12px !important;
+  box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+  transition: box-shadow 0.5s ease, transform 0.5s ease;
+}
+.slider-item:hover {
+  box-shadow: 0 25px 50px rgba(0,0,0,0.5);
 }
 @media (max-width: 768px) {
   .slider-item {
@@ -474,7 +516,10 @@ body.loading {
   content:''; position:absolute; top:-20px; right:-20px; width:100%; height:100%; border: 1px solid var(--gold); z-index:-1;
 }
 .heritage-image .img-inner { height: 100%; }
-.heritage-image img { width: 100%; height: 130%; object-fit: cover; }
+.heritage-image img {
+  width: 100%; height: 130%; object-fit: cover;
+  image-rendering: -webkit-optimize-contrast;
+}
 @media (max-width: 768px) {
   .heritage-section { flex-direction: column; padding: 80px 5%; gap: 50px; }
   .heritage-text { font-size: 1rem; }
@@ -525,9 +570,9 @@ body.loading {
 /* Glassmorphic Modal */
 .glass-modal {
   position: fixed; top:0; left:0; width:100vw; height:100vh;
-  background: rgba(0,0,0,0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  background: rgba(0,0,0,0.88); backdrop-filter: blur(25px) saturate(180%); -webkit-backdrop-filter: blur(25px) saturate(180%);
   z-index: 500000;
-  display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.4s ease;
+  display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .glass-modal.active { opacity: 1; pointer-events: all; }
 
@@ -704,17 +749,20 @@ body.loading {
 }
 .product-card {
   background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.05);
-  border-radius: 5px;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
   overflow: hidden;
-  transition: transform 0.3s ease, background 0.3s ease;
+  transition: transform 0.5s cubic-bezier(0.23, 1, 0.32, 1), background 0.4s ease, box-shadow 0.5s ease, border-color 0.4s ease;
+  will-change: transform;
 }
 .button-submit:active {
   transform: scale(0.95);
 }
 .product-card:hover {
-  transform: translateY(-5px);
-  background: rgba(255,255,255,0.08);
+  transform: translateY(-8px);
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(212, 175, 55, 0.2);
+  box-shadow: 0 25px 50px rgba(0,0,0,0.4), 0 0 0 1px rgba(212,175,55,0.1);
 }
 .product-img-wrapper {
   width: 100%;
@@ -725,7 +773,10 @@ body.loading {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.7s ease;
+  transition: transform 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+  image-rendering: -webkit-optimize-contrast;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 .product-card:hover .product-img-wrapper img {
   transform: scale(1.05);
@@ -837,7 +888,7 @@ body.loading {
   height: 100%;
   background: url('/images/boutique_hero_1.png') no-repeat center center;
   background-size: cover;
-  filter: brightness(0.3) blur(10px);
+  filter: brightness(0.25) blur(15px) saturate(120%);
   z-index: 1;
 }
 .onboarding-content {
@@ -1766,4 +1817,96 @@ hr {
 button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 2px;
+}
+
+
+/* ============ Premium Page Load ============ */
+#mainSite {
+  animation: pageContentFadeIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes pageContentFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ============ Premium Image Quality Global ============ */
+img {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+/* ============ Announcement Bar Polish ============ */
+.announcement-bar {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* ============ Header Glass Effect ============ */
+.header {
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  background: rgba(7, 7, 7, 0.4);
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  transition: background 0.4s ease, backdrop-filter 0.4s ease;
+}
+
+/* ============ Marquee Enhancement ============ */
+.marquee-wrapper {
+  background: linear-gradient(180deg, var(--bg-dark) 0%, rgba(15,15,15,1) 50%, var(--bg-dark) 100%);
+}
+
+/* ============ Footer Premium Polish ============ */
+.footer-huge-title span {
+  background: linear-gradient(135deg, #fff 0%, rgba(212,175,55,0.6) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ============ Product Detail Modal Image Quality ============ */
+#pdGallery img, #pdMainImage {
+  image-rendering: -webkit-optimize-contrast;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+/* ============ Smooth Section Transitions ============ */
+.collections-section,
+.lookbook-section,
+.heritage-section,
+.contact-section {
+  position: relative;
+}
+.collections-section::before,
+.lookbook-section::before,
+.heritage-section::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 120px;
+  background: linear-gradient(to bottom, var(--bg-dark), transparent);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ============ Contact Form Premium ============ */
+.input-group input, .input-group textarea {
+  transition: border-color 0.3s ease, box-shadow 0.3s ease !important;
+}
+.input-group input:focus, .input-group textarea:focus {
+  box-shadow: 0 0 15px rgba(212, 175, 55, 0.15);
+}
+
+/* ============ Stat Counter Animation ============ */
+.stat-num {
+  transition: color 0.3s ease;
+}
+.stat-item:hover .stat-num {
+  text-shadow: 0 0 20px rgba(212, 175, 55, 0.4);
+}
+
+/* ============ Premium Glass Radio Nav ============ */
+.glass-radio-group {
+  backdrop-filter: blur(15px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(15px) saturate(180%) !important;
 }

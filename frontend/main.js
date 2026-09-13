@@ -312,7 +312,7 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
       slides[currentSlide].classList.remove('active');
       currentSlide = (currentSlide + 1) % slides.length;
       slides[currentSlide].classList.add('active');
-    }, 4000); // Change slide every 4 seconds
+    }, 6000); // Change slide every 4 seconds
   }
 
 
@@ -362,6 +362,22 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
   }, observerOptions);
 
   document.querySelectorAll('.scrollspy-section').forEach(sec => observer.observe(sec));
+
+  // Premium header scroll effect
+  const headerEl = document.querySelector('.header');
+  if (headerEl) {
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 100) {
+        headerEl.style.background = 'rgba(7, 7, 7, 0.85)';
+        headerEl.style.padding = '15px 5%';
+      } else {
+        headerEl.style.background = 'rgba(7, 7, 7, 0.4)';
+        headerEl.style.padding = '30px 5%';
+      }
+    }, { passive: true });
+  }
+  // header-scrolled flag
+
 
   // --- Fetch Collections & Horizontal Scroll ---
   const collectionsGrid = document.getElementById('collectionsGrid');
