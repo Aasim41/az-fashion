@@ -1581,12 +1581,12 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
     });
   };
 
-  window.initRazorpayCheckout = (amount, reqIds) => {
+  window.initRazorpayCheckout = (amount, reqIds, shippingAddress) => {
     alert("Initiating secure checkout... Please wait.");
     fetch('/api/razorpay/create-order', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getUserAuthHeaders() },
-      body: JSON.stringify({ amount })
+      body: JSON.stringify({ amount, req_ids: reqIds })
     }).then(r => {
       if (r.status === 401) {
         handleSessionTerminated();
@@ -1611,6 +1611,8 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...getUserAuthHeaders() },
             body: JSON.stringify({
+              req_ids: reqIds,
+              shipping_address: shippingAddress,
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature

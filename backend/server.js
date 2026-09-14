@@ -791,13 +791,19 @@ app.post('/api/razorpay/create-order', async (req, res) => {
 // 20. Razorpay Verify Payment
 app.post('/api/razorpay/verify', async (req, res) => {
   try {
-    const { test_mode, req_ids, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+    const { test_mode, req_ids, shipping_address, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
     if (test_mode) {
       if (req_ids) {
         const ids = req_ids.split(',').map(id => parseInt(id, 10)).filter(Boolean);
         if (ids.length > 0) {
-          await supabase.from('requests').update({ status: 'paid' }).in('id', ids);
+          const { data: testReqs } = await supabase.from('requests').select('id, color').in('id', ids);
+          if (testReqs) {
+            for (const r of testReqs) {
+              const newColor = shipping_address ? `${r.color || ''} | Addr: ${shipping_address}` : r.color;
+              await supabase.from('requests').update({ status: 'paid', color: newColor }).eq('id', r.id);
+            }
+          }
         }
       }
       return res.json({ message: "Test Payment verified successfully" });
@@ -813,11 +819,15 @@ app.post('/api/razorpay/verify', async (req, res) => {
       if (req_ids) {
         const ids = req_ids.split(',').map(id => parseInt(id, 10)).filter(Boolean);
         if (ids.length > 0) {
-          const { data: updatedReqs } = await supabase.from('requests').update({ status: 'paid' }).in('id', ids).select();
+          const { data: updatedReqs } = await supabase.from('requests').select('id, product_id, size, color').in('id', ids);
           
           if (updatedReqs) {
             for (const r of updatedReqs) {
               try {
+                // Update Address in Color
+                const newColor = shipping_address ? `${r.color || ''} | Addr: ${shipping_address}` : r.color;
+                await supabase.from('requests').update({ status: 'paid', color: newColor }).eq('id', r.id);
+
                 // Deduct Inventory
                 const { data: p } = await supabase.from('products').select('sizes, name').eq('id', r.product_id).single();
                 if (p) {
