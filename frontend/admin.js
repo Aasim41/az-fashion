@@ -484,7 +484,8 @@ document.getElementById('addProductForm').addEventListener('submit', (e) => {
     if(res.error) return alert(res.error);
     alert('Product uploaded successfully!');
     document.getElementById('addProductForm').reset();
-    document.getElementById('addImagePreview').innerHTML = '';
+    const addVariantCont = document.getElementById('addColorVariantContainer');
+    if (addVariantCont) addVariantCont.innerHTML = '';
     loadProducts();
   }).catch(err => {
     console.error(err);
@@ -501,11 +502,8 @@ window.openEditProduct = (encodedProduct) => {
   document.getElementById('editPrice').value = p.price;
   document.getElementById('editCollection').value = p.collection_id || '';
   
-  if (p.colors && Array.isArray(p.colors)) {
-    document.getElementById('editColors').value = p.colors.join(', ');
-  } else {
-    document.getElementById('editColors').value = '';
-  }
+  const variantCont = document.getElementById('editColorVariantContainer');
+  if (variantCont) variantCont.innerHTML = '';
 
   const sizeCont = document.getElementById('editSizeContainer');
   if (sizeCont) sizeCont.innerHTML = '';
@@ -516,9 +514,6 @@ window.openEditProduct = (encodedProduct) => {
     if (typeof s === 'object') createSizeRow('editSizeContainer', s.name, s.stock);
     else createSizeRow('editSizeContainer', s, 10);
   });
-  
-  document.getElementById('editImages').value = ''; // Reset file input
-  document.getElementById('editImagePreview').innerHTML = '';
   
   document.getElementById('editProductModal').style.display = 'flex';
 };
