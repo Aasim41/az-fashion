@@ -652,7 +652,7 @@ app.get('/api/admin/requests', authenticateAdmin, async (req, res) => {
       if (prods) prods.forEach(p => { productsMap[p.id] = p; });
     }
     if (userIds.length > 0) {
-      const { data: us } = await supabase.from('users').select('id, name, email, phone').in('id', userIds);
+      const { data: us } = await supabase.from('users').select('id, name, email, phone, address').in('id', userIds);
       if (us) us.forEach(u => { usersMap[u.id] = u; });
     }
 
@@ -666,6 +666,8 @@ app.get('/api/admin/requests', authenticateAdmin, async (req, res) => {
           if (Array.isArray(arr) && arr.length > 0) primaryImage = arr[0];
         }
       } catch (e) {}
+      
+      // The user's address is an array string in DB, but we'll just pass it as string for the frontend to parse or display
       return {
         ...r,
         product_name: p.name || 'Product',
@@ -673,7 +675,8 @@ app.get('/api/admin/requests', authenticateAdmin, async (req, res) => {
         image_url: primaryImage || '/images/col_daily.png',
         user_name: u.name || 'Client',
         user_email: u.email || '',
-        user_phone: u.phone || ''
+        user_phone: u.phone || '',
+        user_address: u.address || ''
       };
     });
 

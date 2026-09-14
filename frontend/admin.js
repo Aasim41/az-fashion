@@ -692,6 +692,12 @@ Estimated delivery is within 10 days. Thank you for choosing us!`);
           if (Array.isArray(arr) && arr.length > 0) imgSrc = arr[0];
         }
       } catch(e) {}
+      
+      let addressStr = r.user_address || 'No Address Provided';
+      try {
+        const arr = JSON.parse(r.user_address);
+        if (Array.isArray(arr) && arr.length > 0) addressStr = arr[arr.length - 1]; // pick latest
+      } catch(e) {}
 
       tbody.innerHTML += `
         <tr>
@@ -701,6 +707,7 @@ Estimated delivery is within 10 days. Thank you for choosing us!`);
             <strong>${r.user_name || 'Client'}</strong>
             <br><small style="opacity:0.7">${r.user_email || ''}</small>
             ${r.user_phone ? `<br><small style="color:var(--gold);"><i class="fas fa-phone"></i> ${r.user_phone}</small>` : ''}
+            ${addressStr !== 'No Address Provided' ? `<br><small style="color:#bbb; display:inline-block; margin-top:4px; font-size:0.75rem; max-width:180px; line-height:1.3; white-space:normal;"><i class="fas fa-map-marker-alt"></i> ${addressStr}</small>` : ''}
           </td>
           <td>${r.product_name} <br><small style="color:var(--gold);">₹${r.price}</small></td>
           <td>${r.size || 'N/A'}</td>
