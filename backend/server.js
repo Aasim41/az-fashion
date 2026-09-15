@@ -788,6 +788,11 @@ app.post('/api/razorpay/create-order', async (req, res) => {
   }
 });
 
+// 19.5 Razorpay Public Key Config
+app.get('/api/razorpay/config', (req, res) => {
+  res.json({ key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_TAcCFGTght1pfM' });
+});
+
 // 20. Razorpay Verify Payment
 app.post('/api/razorpay/verify', async (req, res) => {
   try {

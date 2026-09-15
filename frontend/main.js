@@ -1599,61 +1599,58 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
         return alert("Order Creation Error: " + order.error);
       }
       
-      const options = {
-        "key": "rzp_test_TAcCFGTght1pfM", // Real Razorpay Key
-        "amount": order.amount,
-        "currency": "INR",
-        "name": "AZ Fashion",
-        "description": "Premium Ethnic Wear",
-        "order_id": order.id,
-        "handler": function (response) {
-          fetch('/api/razorpay/verify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getUserAuthHeaders() },
-            body: JSON.stringify({
-              req_ids: reqIds,
-              shipping_address: shippingAddress,
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature
-            })
-          }).then(r => {
-            if (r.status === 401) {
-              handleSessionTerminated();
-              return null;
-            }
-            return r.json();
-          }).then(verifyRes => {
-            if (!verifyRes) return;
-            if (verifyRes.error) {
-              alert('Payment Verification Failed: ' + verifyRes.error);
-            } else {
-              document.getElementById('requestsModal').classList.remove('active');
-              const confModal = document.getElementById('orderConfirmationModal');
-              document.getElementById('confirmOrderId').innerText = verifyRes.orderId || response.razorpay_order_id;
-              confModal.classList.add('active');
-              updateMyRequestsBadge();
-            }
-          });
-        },
-        "prefill": {
-          "name": currentUser ? currentUser.name : '',
-          "email": currentUser ? currentUser.email : ''
-        },
-        "theme": {
-          "color": "#d4af37" // gold
-        }
-      };
-      
-      try {
-        const rzp = new window.Razorpay(options);
-        rzp.on('payment.failed', function (response) {
+      fetch('/api/razorpay/config').then(res => res.json()).then(conf => {
+        const options = {
+          "key": conf.key_id,
+          "amount": order.amount,
+          "currency": "INR",
+          "name": "AZ Fashion",
+          "description": "Premium Ethnic Wear",
+          "order_id": order.id,
+          "handler": function (response) {
+            fetch('/api/razorpay/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', ...getUserAuthHeaders() },
+              body: JSON.stringify({
+                req_ids: reqIds,
+                shipping_address: shippingAddress,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              })
+            }).then(r => {
+              if (r.status === 401) {
+                handleSessionTerminated();
+                return null;
+              }
+              return r.json();
+            }).then(verifyRes => {
+              if (!verifyRes) return;
+              if (verifyRes.error) {
+                alert('Payment Verification Failed: ' + verifyRes.error);
+              } else {
+                document.getElementById('requestsModal').classList.remove('active');
+                const confModal = document.getElementById('orderConfirmationModal');
+                document.getElementById('confirmOrderId').innerText = verifyRes.orderId || response.razorpay_order_id;
+                confModal.classList.add('active');
+                updateMyRequestsBadge();
+              }
+            });
+          },
+          "prefill": {
+            "name": currentUser ? currentUser.name : '',
+            "email": currentUser ? currentUser.email : ''
+          },
+          "theme": {
+            "color": "#d4af37" // gold
+          }
+        };
+        const rzp1 = new window.Razorpay(options);
+        rzp1.on('payment.failed', function (response){
           alert("Payment Failed: " + response.error.description);
         });
-        rzp.open();
-      } catch (err) {
-        alert("Failed to open Razorpay: " + err.message);
-      }
+        rzp1.open();
+      }).catch(err => alert("Error loading payment configuration"));
     }).catch(err => {
       alert("Network Error: " + err.message);
     });
