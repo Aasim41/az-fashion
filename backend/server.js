@@ -63,7 +63,7 @@ app.use('/api/', (req, res, next) => {
 // 4. Secure File Upload with Multer in Memory for Cloud Storage
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB max file size
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB max file size
   fileFilter: (req, file, cb) => {
     const allowedExts = ['.jpg', '.jpeg', '.png', '.webp'];
     const ext = path.extname(file.originalname).toLowerCase();
@@ -200,7 +200,7 @@ app.get('/api/products', async (req, res) => {
 });
 
 // 3. Admin: Add Product (Multiple images uploaded directly to Supabase Storage)
-app.post('/api/admin/products', authenticateAdmin, upload.array('images', 10), async (req, res) => {
+app.post('/api/admin/products', authenticateAdmin, upload.array('images', 50), async (req, res) => {
   try {
     const { name, description, price, collection_id, sizes, category } = req.body;
     let imageUrls = [];
@@ -262,7 +262,7 @@ app.delete('/api/admin/products/:id', authenticateAdmin, async (req, res) => {
 });
 
 // 5. Admin: Update Product (Multiple images support with Supabase Storage)
-app.put('/api/admin/products/:id', authenticateAdmin, upload.array('images', 10), async (req, res) => {
+app.put('/api/admin/products/:id', authenticateAdmin, upload.array('images', 50), async (req, res) => {
   try {
     const { name, description, price, collection_id, sizes, colors } = req.body;
     let sizesArr = [];

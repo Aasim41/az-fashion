@@ -1214,6 +1214,50 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
     renderReviews(prod.reviews);
     document.getElementById('addReviewForm').style.display = 'none';
 
+    // Populate Suggestions
+    const suggestionsDiv = document.getElementById('pdSuggestions');
+    const suggestionsList = document.getElementById('pdSuggestionsList');
+    if (suggestionsDiv && suggestionsList) {
+      suggestionsList.innerHTML = '<p style="color:var(--gold);">Loading suggestions...</p>';
+      suggestionsDiv.style.display = 'block';
+      
+      fetch(`/api/products?collection_id=${prod.collection_id}`)
+        .then(r => r.json())
+        .then(similar => {
+          suggestionsList.innerHTML = '';
+          const filtered = similar.filter(p => p.id !== prod.id).slice(0, 5); // show up to 5
+          if (filtered.length === 0) {
+            suggestionsDiv.style.display = 'none';
+          } else {
+            filtered.forEach(sp => {
+              const sCard = document.createElement('div');
+              sCard.style.cssText = 'min-width: 140px; width: 140px; cursor: pointer; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;';
+              
+              let sImg = sp.image_url;
+              if (sp.images && sp.images.length > 0) sImg = sp.images[0];
+              
+              sCard.innerHTML = `
+                <div style="border-radius: 8px; overflow: hidden; background: rgba(0,0,0,0.3); aspect-ratio: 3/4;">
+                  <img src="${sImg}" alt="${sp.name}" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                </div>
+                <div style="text-align: center;">
+                  <div style="font-size: 0.9rem; color: #fff; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${sp.name}</div>
+                  <div style="font-size: 0.8rem; color: var(--gold);">₹${sp.price}</div>
+                </div>
+              `;
+              sCard.onclick = () => {
+                pdModal.classList.remove('active');
+                setTimeout(() => window.openProductDetails(sp), 300);
+              };
+              suggestionsList.appendChild(sCard);
+            });
+          }
+        }).catch(err => {
+          console.error("Failed to load suggestions", err);
+          suggestionsDiv.style.display = 'none';
+        });
+    }
+
     pdModal.classList.add('active');
   };
 
