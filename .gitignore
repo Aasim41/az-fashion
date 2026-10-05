@@ -5,3 +5,11 @@ frontend/dist/
 .env
 *.sqlite
 
+
+.env
+.env.*
+*.env*
+.env.local
+*.local
+node_modules
+__pycache__
