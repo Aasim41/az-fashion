@@ -1036,6 +1036,10 @@ app.use((req, res, next) => {
   res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`Backend server is running on http://localhost:${PORT}`);
-});
+module.exports = app;
+
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`Backend server is running on http://localhost:${PORT}`);
+  });
+}

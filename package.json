@@ -3,9 +3,20 @@
   "version": "1.0.0",
   "description": "AZ Fashion Full-Stack App",
   "scripts": {
-    "install-all": "cd backend && npm install && cd ../frontend && npm install",
-    "build": "cd backend && npm install && cd ../frontend && npm install && npm run build",
+    "build": "cd frontend && npm install && npm run build",
     "start": "cd backend && node server.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.115.0",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.3.0",
+    "razorpay": "^2.9.6"
   },
   "engines": {
     "node": ">=18.0.0"
