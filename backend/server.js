@@ -869,6 +869,70 @@ app.post('/api/razorpay/verify', async (req, res) => {
   }
 });
 
+// 20.5 Direct WhatsApp Order Endpoint
+app.post('/api/orders/whatsapp', async (req, res) => {
+  try {
+    const { req_ids, shipping_address } = req.body;
+    if (!req_ids) return res.status(400).json({ error: 'Request IDs required' });
+
+    const ids = String(req_ids).split(',').map(id => parseInt(id.trim(), 10)).filter(Boolean);
+    if (ids.length === 0) return res.status(400).json({ error: 'Valid Request IDs required' });
+
+    const orderId = 'AZ-WA-' + Math.floor(100000 + Math.random() * 900000);
+
+    const { data: updatedReqs, error: fetchErr } = await supabase
+      .from('requests')
+      .select('id, product_id, size, color')
+      .in('id', ids);
+
+    if (fetchErr) throw fetchErr;
+
+    if (updatedReqs && updatedReqs.length > 0) {
+      for (const r of updatedReqs) {
+        try {
+          const newColor = shipping_address ? `${r.color || ''} | Addr: ${shipping_address} | Ref: ${orderId}` : `${r.color || ''} | Ref: ${orderId}`;
+          await supabase.from('requests').update({ status: 'paid', color: newColor }).eq('id', r.id);
+
+          // Deduct Inventory
+          const { data: p } = await supabase.from('products').select('sizes, name').eq('id', r.product_id).single();
+          if (p) {
+            let sizesArr = [];
+            if (typeof p.sizes === 'string') sizesArr = JSON.parse(p.sizes || '[]');
+            else if (Array.isArray(p.sizes)) sizesArr = p.sizes;
+
+            const qtyMatch = (r.size || '').match(/\| Qty: (\d+)/);
+            const reqQty = qtyMatch ? parseInt(qtyMatch[1], 10) : 1;
+            const pureSize = (r.size || '').replace(/\| Qty: \d+/, '').trim();
+
+            let changed = false;
+            sizesArr = sizesArr.map(s => {
+              const sName = typeof s === 'object' ? s.name : s;
+              if (sName === pureSize || pureSize.toLowerCase() === 'unstitched') {
+                changed = true;
+                if (typeof s === 'object') {
+                  return { ...s, stock: Math.max(0, (s.stock || 0) - reqQty) };
+                }
+              }
+              return s;
+            });
+
+            if (changed) {
+              await supabase.from('products').update({ sizes: JSON.stringify(sizesArr) }).eq('id', r.product_id);
+            }
+          }
+        } catch (itemErr) {
+          console.error('Error processing item for WhatsApp order:', itemErr);
+        }
+      }
+    }
+
+    res.json({ message: 'WhatsApp Order logged successfully', orderId });
+  } catch (err) {
+    console.error('Error creating WhatsApp order:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // 21. Add Review
 app.post('/api/products/:id/reviews', async (req, res) => {
   try {

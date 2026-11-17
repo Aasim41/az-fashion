@@ -304,8 +304,57 @@ function extractSizes(containerId) {
       sizes.push({ name: names[i].value.trim(), stock: parseInt(stocks[i].value, 10) || 0 });
     }
   }
+
+  // Fallback for Unstitched Suits if empty
+  if (sizes.length === 0) {
+    const isAdd = containerId === 'addSizeContainer';
+    const selVal = document.getElementById(isAdd ? 'addCollection' : 'editCollection')?.value;
+    const col = allCollections.find(c => String(c.id) === String(selVal));
+    if (col && col.name.toLowerCase().includes('unstitched')) {
+      return JSON.stringify([{ name: 'Unstitched', stock: 10 }]);
+    }
+  }
+
   return JSON.stringify(sizes);
 }
+
+function handleCollectionCategoryChange(selectId, containerId, noticeId, rowBtnId) {
+  const sel = document.getElementById(selectId);
+  const container = document.getElementById(containerId);
+  const notice = document.getElementById(noticeId);
+  const rowBtn = document.getElementById(rowBtnId);
+  if (!sel || !container) return;
+
+  const col = allCollections.find(c => String(c.id) === String(sel.value));
+  const isUnstitched = col && col.name.toLowerCase().includes('unstitched');
+
+  if (isUnstitched) {
+    if (notice) notice.style.display = 'block';
+    if (rowBtn) rowBtn.style.display = 'none';
+    const currentStock = container.querySelector('.size-stock-input')?.value || 10;
+    container.innerHTML = `
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <input type="text" value="Unstitched" class="size-name-input" readonly style="flex: 2; padding: 8px; border-radius: 4px; border: none; background: rgba(255,255,255,0.05); color: var(--gold); font-weight: bold;">
+        <input type="number" placeholder="Available Stock" value="${currentStock}" class="size-stock-input" style="flex: 1; padding: 8px; border-radius: 4px; border: 1px solid var(--gold); background: rgba(0,0,0,0.5); color: white;" min="0" required>
+      </div>
+    `;
+  } else {
+    if (notice) notice.style.display = 'none';
+    if (rowBtn) rowBtn.style.display = 'block';
+    if (container.children.length === 1 && container.querySelector('.size-name-input')?.value === 'Unstitched') {
+      container.innerHTML = '';
+      createSizeRow(containerId, 'M', 10);
+    }
+  }
+}
+
+document.getElementById('addCollection')?.addEventListener('change', () => {
+  handleCollectionCategoryChange('addCollection', 'addSizeContainer', 'addUnstitchedNotice', 'addSizeRowBtn');
+});
+
+document.getElementById('editCollection')?.addEventListener('change', () => {
+  handleCollectionCategoryChange('editCollection', 'editSizeContainer', 'editUnstitchedNotice', 'editSizeRowBtn');
+});
 
 // Tab Navigation
 document.querySelectorAll('.admin-nav-btn[data-tab]').forEach(btn => {
@@ -514,6 +563,8 @@ window.openEditProduct = (encodedProduct) => {
     if (typeof s === 'object') createSizeRow('editSizeContainer', s.name, s.stock);
     else createSizeRow('editSizeContainer', s, 10);
   });
+
+  handleCollectionCategoryChange('editCollection', 'editSizeContainer', 'editUnstitchedNotice', 'editSizeRowBtn');
   
   document.getElementById('editProductModal').style.display = 'flex';
 };

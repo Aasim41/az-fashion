@@ -472,7 +472,7 @@
               <div id="pdColors" style="display: flex; gap: 10px; flex-wrap: wrap;"></div>
             </div>
 
-            <div style="margin-bottom: 20px;">
+            <div id="pdSizeWrap" style="margin-bottom: 20px;">
               <h4 style="margin-bottom: 10px; color: var(--gold);">Select Size</h4>
               <div id="pdSizes" style="display: flex; gap: 10px; flex-wrap: wrap;"></div>
             </div>
@@ -486,9 +486,9 @@
               </div>
             </div>
             
-            <button id="pdRequestBtn" class="btn-solid magnetic" style="width: 100%;"><span>Request Availability</span></button>
+            <button id="pdRequestBtn" class="btn-solid magnetic" style="width: 100%;"><span><i class="fas fa-shopping-bag" style="margin-right: 8px;"></i> Add to Cart</span></button>
             <p style="text-align: center; font-size: 0.8rem; color: var(--text-muted); margin-top: 10px;">
-              * Your request will be verified within 24 hours.
+              * Add to cart and easily complete your order directly with our boutique on WhatsApp.
             </p>
             
             <div id="pdSuggestions" style="margin-top: 40px; display: none;"><h4 style="color: var(--gold); margin-bottom: 15px;">You May Also Like</h4><div id="pdSuggestionsList" style="display: flex; gap: 15px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: thin;"><!-- Populated by JS --></div></div><div id="pdReviews" style="margin-top: 40px;">
@@ -586,11 +586,13 @@
             </div>
             
             <div class="checkout">
-              <div class="footer">
+              <div class="footer" style="flex-wrap: wrap; gap: 15px;">
                 <div class="price" id="checkoutTotalPrice">₹0</div>
-                <div style="display: flex; gap: 10px;">
-                  <button class="checkout-btn" id="testPayBtn" style="background: rgba(255,255,255,0.1); color: #fff;">Test Pay</button>
-                  <button class="checkout-btn" id="checkoutPayBtn">Checkout</button>
+                <div style="display: flex; gap: 10px; flex: 1; min-width: 200px; justify-content: flex-end;">
+                  <button class="checkout-btn" id="checkoutPayBtn" style="background: linear-gradient(135deg, #25D366, #128C7E); color: white; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; border: none; cursor: pointer; padding: 12px 20px; border-radius: 8px; font-size: 1rem; width: 100%; box-shadow: 0 4px 15px rgba(37,211,102,0.35); transition: transform 0.2s, box-shadow 0.2s;">
+                    <i class="fab fa-whatsapp" style="font-size: 1.25rem;"></i> Complete Order on WhatsApp
+                  </button>
+                  <button class="checkout-btn" id="testPayBtn" style="display: none;">Test Pay</button>
                 </div>
               </div>
             </div>
@@ -606,20 +608,20 @@
             <button class="modal-back-btn magnetic" onclick="document.getElementById('orderConfirmationModal').classList.remove('active')"><i class="fas fa-arrow-left"></i> Back</button>
           </div>
           
-          <div style="margin-bottom: 20px; color: var(--gold); font-size: 4rem;">
-            <i class="fas fa-check-circle"></i>
+          <div style="margin-bottom: 20px; color: #25D366; font-size: 4rem;">
+            <i class="fab fa-whatsapp"></i>
           </div>
-          <h2 class="modal-heading" style="color: var(--gold);">Order Confirmed!</h2>
-          <p class="modal-desc" style="font-size: 1.1rem; margin-top: 15px;">
-            Thank you for your purchase. Your payment was successful and your beautiful piece is being prepared for dispatch.
+          <h2 class="modal-heading" style="color: var(--gold);">Order Forwarded to WhatsApp!</h2>
+          <p class="modal-desc" style="font-size: 1.05rem; margin-top: 15px; line-height: 1.6;">
+            Thank you for ordering with AZ Fashion. Your order details and delivery address have been sent to our boutique team on WhatsApp (+91 82106 34488). We will assist you immediately!
           </p>
-          <div style="margin-top: 30px; font-weight: 600;">
-            <p>Order ID: <span id="confirmOrderId" style="color: var(--gold);"></span></p>
+          <div style="margin-top: 25px; font-weight: 600;">
+            <p>Order Reference ID: <span id="confirmOrderId" style="color: var(--gold); font-size: 1.2rem;"></span></p>
           </div>
           <div style="margin-top: 25px; padding: 15px; background: rgba(255,152,0,0.1); border-left: 4px solid #ff9800; text-align: left; font-size: 0.9rem; line-height: 1.5; border-radius: 4px;">
             <strong style="color: #ff9800;">Important Reminder:</strong> Please remember to record an unboxing video upon receiving your order and send it to our <a href="https://wa.me/+918210634488" target="_blank" style="color: var(--gold); text-decoration: underline;">WhatsApp</a>. This is <strong>mandatory</strong> in every case.
           </div>
-          <button class="button-submit" style="margin-top: 40px; width: 200px;" onclick="document.getElementById('orderConfirmationModal').classList.remove('active')">Continue Shopping</button>
+          <button class="button-submit" style="margin-top: 35px; width: 220px;" onclick="document.getElementById('orderConfirmationModal').classList.remove('active')">Continue Shopping</button>
         </div>
       </div>
 
@@ -733,5 +735,12 @@
     }
   </script>
   
+  <!-- Floating Luxury WhatsApp Concierge -->
+  <a href="https://wa.me/918210634488?text=Hello%20AZ%20Fashion,%20I%20am%20browsing%20your%20boutique%20and%20would%20like%20assistance." target="_blank" class="floating-whatsapp-btn magnetic" title="Chat with us on WhatsApp" aria-label="Chat with AZ Fashion on WhatsApp">
+    <div class="whatsapp-pulse"></div>
+    <i class="fab fa-whatsapp"></i>
+    <span class="whatsapp-tooltip">Chat with Concierge</span>
+  </a>
+
 </body>
 </html>

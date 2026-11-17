@@ -79,10 +79,11 @@
               <input type="number" id="addPrice" placeholder="Price (INR)" style="flex: 1; padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required>
               <select id="addCollection" style="flex: 1; padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;" required>
                 <option value="">Select Category</option>
-                <option value="1">Daily Wear</option>
-                <option value="2">Party Wear</option>
-                <option value="3">Lucknow Chikankari</option>
-                <option value="4">Pakistani Suits</option>
+                <option value="4">Daily Wear</option>
+                <option value="5">Party Wear</option>
+                <option value="6">Lucknow Chikankari</option>
+                <option value="7">Pakistani Suits</option>
+                <option value="8">Unstitched Suits</option>
               </select>
             </div>
             
@@ -94,6 +95,9 @@
             
             <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
               <label style="color: var(--gold); display: block; margin-bottom: 10px; font-weight: bold;">Inventory (Sizes & Stock)</label>
+              <div id="addUnstitchedNotice" style="display: none; padding: 10px 14px; background: rgba(212,175,55,0.15); border: 1px solid var(--gold); border-radius: 6px; color: var(--gold); font-size: 0.9rem; margin-bottom: 12px;">
+                <i class="fas fa-cut"></i> <strong>Unstitched Suits:</strong> These suits do not have sizes. Single stock count will be tracked for this piece.
+              </div>
               <div id="addSizeContainer" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px;"></div>
               <button type="button" id="addSizeRowBtn" style="background: transparent; border: 1px dashed var(--gold); color: var(--gold); padding: 8px; border-radius: 5px; cursor: pointer; width: 100%;">+ Add Size / Stock</button>
             </div>
@@ -183,6 +187,9 @@
         
         <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px;">
           <label style="color: var(--gold); display: block; margin-bottom: 10px; font-weight: bold;">Inventory (Sizes & Stock)</label>
+          <div id="editUnstitchedNotice" style="display: none; padding: 10px 14px; background: rgba(212,175,55,0.15); border: 1px solid var(--gold); border-radius: 6px; color: var(--gold); font-size: 0.9rem; margin-bottom: 12px;">
+            <i class="fas fa-cut"></i> <strong>Unstitched Suits:</strong> These suits do not have sizes. Single stock count will be tracked for this piece.
+          </div>
           <div id="editSizeContainer" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px;"></div>
           <button type="button" id="editSizeRowBtn" style="background: transparent; border: 1px dashed var(--gold); color: var(--gold); padding: 8px; border-radius: 5px; cursor: pointer; width: 100%;">+ Add Size / Stock</button>
         </div>

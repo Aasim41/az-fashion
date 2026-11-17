@@ -397,6 +397,7 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
             'Party Wear': '/images/col_party.png',
             'Lucknow Chikankari': '/images/col_chikankari.png',
             'Pakistani Suits': '/images/col_pakistani.png',
+            'Unstitched Suits': '/images/col_suits.png',
           };
           const imgUrl = imageMap[item.name] || item.image_url || '/images/col_daily.png';
 
