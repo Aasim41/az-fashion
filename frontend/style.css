@@ -1923,3 +1923,161 @@ img {
   align-items: center;
   justify-content: center;
 }
+
+/* ========================================================
+   PREMIUM LUXURY ANIMATIONS & PERFORMANCE OPTIMIZATIONS
+   ======================================================== */
+
+/* Hardware Accelerated Smooth Cards */
+.product-card {
+  transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1), box-shadow 0.4s cubic-bezier(0.165, 0.84, 0.44, 1), border-color 0.3s ease !important;
+  will-change: transform, box-shadow;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 14px !important;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.03) !important;
+}
+
+.product-card:hover {
+  transform: translateY(-8px) scale(1.015);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.75), 0 0 25px rgba(212, 175, 55, 0.25) !important;
+  border-color: rgba(212, 175, 55, 0.5) !important;
+}
+
+.product-card .product-img-wrapper img {
+  transition: transform 0.6s cubic-bezier(0.165, 0.84, 0.44, 1) !important;
+  will-change: transform;
+}
+
+.product-card:hover .product-img-wrapper img {
+  transform: scale(1.06);
+}
+
+/* Shimmer Light Sweeping Effect on Luxury Buttons */
+.btn-solid, .checkout-btn, .button-submit {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s ease !important;
+}
+
+.btn-solid:hover, .checkout-btn:hover, .button-submit:hover {
+  transform: translateY(-2px);
+}
+
+.btn-solid::after, .button-submit::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -70%;
+  width: 45%;
+  height: 200%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transform: rotate(25deg);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.btn-solid:hover::after, .button-submit:hover::after {
+  opacity: 1;
+  animation: goldSweep 1.2s infinite ease-in-out;
+}
+
+@keyframes goldSweep {
+  0% { left: -70%; }
+  100% { left: 140%; }
+}
+
+/* Smooth Modal Opening Transitions */
+.glass-modal.active .glass-modal-content,
+.glass-modal.active .card.container {
+  animation: modalPopIn 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  will-change: transform, opacity;
+}
+
+@keyframes modalPopIn {
+  0% {
+    opacity: 0;
+    transform: translateY(24px) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Floating Luxury WhatsApp Concierge Widget */
+.floating-whatsapp-btn {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #25D366, #128C7E);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.85rem;
+  box-shadow: 0 8px 25px rgba(37, 211, 102, 0.4), 0 0 15px rgba(212, 175, 55, 0.25);
+  z-index: 999;
+  text-decoration: none;
+  transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.35s ease;
+  will-change: transform, box-shadow;
+}
+
+.floating-whatsapp-btn:hover {
+  transform: scale(1.1) translateY(-4px);
+  box-shadow: 0 14px 35px rgba(37, 211, 102, 0.65), 0 0 25px rgba(212, 175, 55, 0.45);
+}
+
+.whatsapp-pulse {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: rgba(37, 211, 102, 0.45);
+  animation: waPulse 2.2s infinite ease-out;
+  z-index: -1;
+  pointer-events: none;
+}
+
+@keyframes waPulse {
+  0% { transform: scale(1); opacity: 0.85; }
+  100% { transform: scale(1.65); opacity: 0; }
+}
+
+.whatsapp-tooltip {
+  position: absolute;
+  right: 70px;
+  background: rgba(18, 18, 18, 0.95);
+  color: var(--gold);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(10px);
+  transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+  font-family: var(--font-sans);
+  font-weight: 600;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.6);
+}
+
+.floating-whatsapp-btn:hover .whatsapp-tooltip {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+@media (max-width: 768px) {
+  .floating-whatsapp-btn {
+    bottom: 20px;
+    right: 20px;
+    width: 52px;
+    height: 52px;
+    font-size: 1.6rem;
+  }
+}

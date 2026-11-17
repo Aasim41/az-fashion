@@ -1144,29 +1144,55 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
       }
     }
 
-    // Render Sizes
-    const sizesContainer = document.getElementById('pdSizes');
-    sizesContainer.innerHTML = '';
-    (prod.sizes || []).forEach(sizeObj => {
-      const sizeName = typeof sizeObj === 'object' ? sizeObj.name : sizeObj;
-      const sizeStock = typeof sizeObj === 'object' ? sizeObj.stock : 10;
-      
-      const btn = document.createElement('button');
-      btn.className = 'size-btn';
-      btn.innerText = sizeName;
-      if (sizeStock <= 0) {
-        btn.disabled = true;
-        btn.style.opacity = '0.4';
-        btn.style.cursor = 'not-allowed';
-        btn.innerText += ' (Out of stock)';
+    // Check if Unstitched Suits (Category ID 8 or "Unstitched" in name or sizes)
+    const isUnstitched = (prod.collection_id === 8) || 
+      (prod.name && prod.name.toLowerCase().includes('unstitched')) || 
+      (prod.sizes && prod.sizes.some(s => (typeof s === 'object' ? s.name : s).toLowerCase().includes('unstitched'))) || 
+      (!prod.sizes || prod.sizes.length === 0);
+
+    const sizeWrap = document.getElementById('pdSizeWrap');
+    if (isUnstitched) {
+      selectedSize = 'Unstitched';
+      if (sizeWrap) {
+        sizeWrap.innerHTML = `
+          <h4 style="margin-bottom: 8px; color: var(--gold); display: flex; align-items: center; gap: 8px;"><i class="fas fa-cut"></i> Sizing Specification</h4>
+          <div style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; background: rgba(212,175,55,0.12); border: 1px solid var(--gold); border-radius: 20px; font-size: 0.9rem; color: var(--gold); font-weight: 600;">
+            <i class="fas fa-check-circle" style="color: #4caf50;"></i> Unstitched Fabric Set &bull; Free Size / Ready-to-Stitch
+          </div>
+        `;
       }
-      btn.onclick = () => {
-        document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected'));
-        btn.classList.add('selected');
-        selectedSize = sizeName;
-      };
-      sizesContainer.appendChild(btn);
-    });
+    } else {
+      if (sizeWrap) {
+        sizeWrap.innerHTML = `
+          <h4 style="margin-bottom: 10px; color: var(--gold);">Select Size</h4>
+          <div id="pdSizes" style="display: flex; gap: 10px; flex-wrap: wrap;"></div>
+        `;
+      }
+      const sizesContainer = document.getElementById('pdSizes');
+      if (sizesContainer) {
+        sizesContainer.innerHTML = '';
+        (prod.sizes || []).forEach(sizeObj => {
+          const sizeName = typeof sizeObj === 'object' ? sizeObj.name : sizeObj;
+          const sizeStock = typeof sizeObj === 'object' ? sizeObj.stock : 10;
+          
+          const btn = document.createElement('button');
+          btn.className = 'size-btn';
+          btn.innerText = sizeName;
+          if (sizeStock <= 0) {
+            btn.disabled = true;
+            btn.style.opacity = '0.4';
+            btn.style.cursor = 'not-allowed';
+            btn.innerText += ' (Out of stock)';
+          }
+          btn.onclick = () => {
+            document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            selectedSize = sizeName;
+          };
+          sizesContainer.appendChild(btn);
+        });
+      }
+    }
 
     // Handle Quantity UI
     selectedQuantity = 1;
@@ -1185,7 +1211,11 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
       qtyPlus.onclick = () => {
         // Find stock of selected size to enforce max quantity
         let maxStock = 10;
-        if (selectedSize) {
+        if (isUnstitched) {
+          const sObj = (prod.sizes || [])[0];
+          if (sObj && typeof sObj === 'object') maxStock = sObj.stock || 20;
+          else maxStock = 20;
+        } else if (selectedSize) {
           const sObj = (prod.sizes || []).find(s => (typeof s === 'object' ? s.name : s) === selectedSize);
           if (sObj && typeof sObj === 'object') maxStock = sObj.stock;
         }
@@ -1193,7 +1223,7 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
           selectedQuantity++;
           qtyInput.value = selectedQuantity;
         } else {
-          alert('Maximum available stock for this size is ' + maxStock);
+          alert('Maximum available stock is ' + maxStock);
         }
       };
     }
@@ -1305,7 +1335,7 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
     });
   }
 
-  // Submit Request Action
+  // Submit Request / Add to Cart Action
   const pdRequestBtn = document.getElementById('pdRequestBtn');
   if (pdRequestBtn) {
     pdRequestBtn.addEventListener('click', () => {
@@ -1313,10 +1343,20 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
       if (selectedProduct && selectedProduct.colors) {
         try { colorsArr = typeof selectedProduct.colors === 'string' ? JSON.parse(selectedProduct.colors) : selectedProduct.colors; } catch(e) {}
       }
-      colorsArr = colorsArr.filter(c => c && c.toLowerCase() !== 'default');
+      colorsArr = colorsArr.filter(c => c && (typeof c === 'string' ? c.toLowerCase() !== 'default' : c.name && c.name.toLowerCase() !== 'default'));
       
-      if (colorsArr.length > 0 && !selectedColor) return alert('Please select a color.');
-      if (!selectedSize) return alert('Please select a size.');
+      if (colorsArr.length > 0 && !selectedColor) return alert('Please select a color variant.');
+
+      const isUnstitched = (selectedProduct.collection_id === 8) || 
+        (selectedProduct.name && selectedProduct.name.toLowerCase().includes('unstitched')) ||
+        (selectedProduct.sizes && selectedProduct.sizes.some(s => (typeof s === 'object' ? s.name : s).toLowerCase().includes('unstitched'))) || 
+        (!selectedProduct.sizes || selectedProduct.sizes.length === 0);
+
+      if (isUnstitched) {
+        selectedSize = 'Unstitched';
+      }
+
+      if (!isUnstitched && !selectedSize) return alert('Please select a size.');
       submitRequest();
     });
   }
@@ -1324,7 +1364,7 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
   function submitRequest() {
     const pdRequestBtn = document.getElementById('pdRequestBtn');
     const originalText = pdRequestBtn.innerHTML;
-    pdRequestBtn.innerHTML = '<span><i class="fas fa-spinner fa-spin"></i> Submitting...</span>';
+    pdRequestBtn.innerHTML = '<span><i class="fas fa-spinner fa-spin"></i> Adding to Cart...</span>';
     
     fetch('/api/requests', {
       method: 'POST',
@@ -1348,10 +1388,10 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
         return alert(res.error);
       }
       
-      // Success Animation
-      pdRequestBtn.innerHTML = '<span><i class="fas fa-check-circle"></i> Successfully Requested!</span>';
-      pdRequestBtn.style.backgroundColor = '#4caf50';
-      pdRequestBtn.style.borderColor = '#4caf50';
+      // Success Feedback
+      pdRequestBtn.innerHTML = '<span><i class="fas fa-check-circle"></i> Added to Cart!</span>';
+      pdRequestBtn.style.backgroundColor = '#25D366';
+      pdRequestBtn.style.borderColor = '#25D366';
       
       updateMyRequestsBadge();
 
@@ -1362,13 +1402,14 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
       
       setTimeout(() => {
         pdModal.classList.remove('active');
-        // Reset after modal closes
         setTimeout(() => {
           pdRequestBtn.innerHTML = originalText;
           pdRequestBtn.style.backgroundColor = '';
           pdRequestBtn.style.borderColor = '';
-        }, 500);
-      }, 1500);
+          // Open Cart automatically so client can immediately place WhatsApp order
+          openRequestsModal();
+        }, 400);
+      }, 700);
     }).catch(() => {
       pdRequestBtn.innerHTML = originalText;
       alert("Something went wrong.");
@@ -1460,19 +1501,19 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
           }
           currentUser.address = addressArrStr;
           localStorage.setItem('az_user', JSON.stringify(currentUser));
-          callback();
+          callback(newAddr);
         });
       } else if (!addrSelect.value) {
         alert("Please select or add a shipping address.");
       } else {
-        callback();
+        callback(addrSelect.value);
       }
     };
 
     const cartSaveAddressBtn = document.getElementById('cartSaveAddressBtn');
     if (cartSaveAddressBtn) {
       cartSaveAddressBtn.onclick = () => {
-        validateAndSaveAddress(() => {
+        validateAndSaveAddress((savedAddr) => {
           while(addrSelect.options.length > 2) { addrSelect.remove(2); }
           addresses.forEach(addr => {
             const opt = document.createElement('option');
@@ -1480,7 +1521,7 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
             opt.text = addr;
             addrSelect.add(opt);
           });
-          addrSelect.value = addresses[addresses.length - 1];
+          addrSelect.value = savedAddr;
           newAddrForm.style.display = 'none';
           alert("Shipping address saved successfully!");
         });
@@ -1506,33 +1547,29 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
         const reqs = allReqs.filter(r => !['paid', 'shipped', 'delivered'].includes(r.status));
         list.innerHTML = '';
         if (reqs.length === 0) {
-          list.innerHTML = `<div class="step"><span>Your cart is empty</span><p>Request an item to see it here.</p></div>`;
+          list.innerHTML = `<div class="step"><span>Your cart is empty</span><p>Select your favorite pieces to order directly via WhatsApp.</p></div>`;
           details.innerHTML = '<span>Subtotal</span><span>₹0</span><span>Shipping</span><span>Free</span><span>Total</span><span>₹0</span>';
           totalPrice.innerText = '₹0';
           payBtn.style.display = 'none';
-          testPayBtn.style.display = 'none';
+          if (testPayBtn) testPayBtn.style.display = 'none';
           return;
         }
 
         let total = 0;
         let payIds = [];
         reqs.forEach(r => {
-          let statusText = `<span style="color: #4caf50; font-weight: 600;">AVAILABLE</span>`;
-          if (r.status === 'pending') statusText = `<span style="color: #ff9800; font-weight: 600;">PENDING APPROVAL</span>`;
-          if (r.status === 'paid') statusText = `<span style="color: #2196f3; font-weight: 600;">PAID</span>`;
+          let statusText = `<span style="color: #25D366; font-weight: 600;"><i class="fas fa-check-circle"></i> In Cart (Ready to Order)</span>`;
           
-          if (r.status === 'available') {
-            const qtyMatch = r.size.match(/\| Qty: (\d+)/);
-            const reqQty = qtyMatch ? parseInt(qtyMatch[1], 10) : 1;
-            total += (r.price * reqQty);
-            payIds.push(r.id);
-          }
+          const qtyMatch = (r.size || '').match(/\| Qty: (\d+)/);
+          const reqQty = qtyMatch ? parseInt(qtyMatch[1], 10) : 1;
+          total += (r.price * reqQty);
+          payIds.push(r.id);
           
           let extraInfo = '';
           if (r.status === 'declined') {
-            statusText = `<span style="color: #f44336; font-weight: 600;">EXPIRED / DECLINED</span>`;
+            statusText = `<span style="color: #f44336; font-weight: 600;">EXPIRED</span>`;
             extraInfo = `<div style="margin-top: 10px; font-size: 0.85rem; color: #ff9800; line-height: 1.4;">
-              This reservation has expired (24h limit) or been declined. Join our <a href="https://chat.whatsapp.com/IivXOd4K7kx1tK72XAdbZa" target="_blank" style="color: #4caf50; text-decoration: underline; font-weight: bold;">WhatsApp Community</a> to stay updated on restocks!
+              Join our <a href="https://chat.whatsapp.com/IivXOd4K7kx1tK72XAdbZa" target="_blank" style="color: #4caf50; text-decoration: underline; font-weight: bold;">WhatsApp Community</a> to stay updated on restocks!
             </div>`;
           }
 
@@ -1549,56 +1586,102 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
               <img src="${reqImg}" alt="${r.product_name}" style="width: 70px; height: 90px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); flex-shrink: 0;">
               <div style="flex: 1; min-width: 0; text-align: left; padding-right: 28px;">
                 <span style="display: block; font-weight: 600; color: var(--gold); font-size: 1.05rem; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${r.product_name}</span>
-                <p style="margin: 0 0 5px 0; font-size: 0.9rem; opacity: 0.9;">Size/Qty: <strong>${r.size}</strong> &bull; <strong style="color: var(--gold);">₹${r.price * (r.size.match(/\| Qty: (\d+)/) ? parseInt(r.size.match(/\| Qty: (\d+)/)[1], 10) : 1)}</strong></p>
+                <p style="margin: 0 0 5px 0; font-size: 0.9rem; opacity: 0.9;">Size/Qty: <strong>${r.size}</strong> &bull; <strong style="color: var(--gold);">₹${r.price * reqQty}</strong></p>
                 <div><span style="font-size: 0.8rem; opacity: 0.7;">Status: </span>${statusText}</div>
                 ${extraInfo}
               </div>
-              <button onclick="removeRequest(${r.id})" style="position: absolute; right: 14px; top: 14px; background: transparent; border: none; color: #ff5252; cursor: pointer; font-size: 1.15rem; transition: 0.2s;" title="Remove Request">
+              <button onclick="removeRequest(${r.id})" style="position: absolute; right: 14px; top: 14px; background: transparent; border: none; color: #ff5252; cursor: pointer; font-size: 1.15rem; transition: 0.2s;" title="Remove Item">
                 <i class="fas fa-trash-alt"></i>
               </button>
             </div>
           `;
         });
         
-        details.innerHTML = `<span>Subtotal</span><span>₹${total}</span><span>Shipping</span><span>Free</span><span>Total</span><span>₹${total}</span>`;
+        details.innerHTML = `<span>Subtotal</span><span>₹${total}</span><span>Shipping</span><span>Free Express</span><span>Total</span><span>₹${total}</span>`;
         totalPrice.innerText = `₹${total}`;
         
         if (total > 0) {
           payBtn.style.display = 'flex';
-          testPayBtn.style.display = 'flex';
+          if (testPayBtn) testPayBtn.style.display = 'none';
           
-          testPayBtn.onclick = () => {
-            validateAndSaveAddress(() => {
-              alert("Test Payment Successful! (Bypassing Razorpay)");
-              fetch('/api/razorpay/verify', {
+          payBtn.onclick = () => {
+            validateAndSaveAddress((savedAddressStr) => {
+              const origPayText = payBtn.innerHTML;
+              payBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting to WhatsApp...';
+              payBtn.disabled = true;
+
+              fetch('/api/orders/whatsapp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', ...getUserAuthHeaders() },
-                body: JSON.stringify({ test_mode: true, req_ids: payIds.join(',') })
-              }).then(r => {
-                if (r.status === 401) {
-                  handleSessionTerminated();
-                  return null;
-                }
-                return r.json();
-              }).then(verifyRes => {
-                if (!verifyRes) return;
-                document.getElementById('requestsModal').classList.remove('active');
-                const confModal = document.getElementById('orderConfirmationModal');
-                document.getElementById('confirmOrderId').innerText = "TEST-" + Math.floor(Math.random()*10000);
-                confModal.classList.add('active');
-                updateMyRequestsBadge();
-              });
-            });
-          };
+                body: JSON.stringify({
+                  req_ids: payIds.join(','),
+                  shipping_address: savedAddressStr
+                })
+              })
+              .then(r => r.json())
+              .then(res => {
+                payBtn.innerHTML = origPayText;
+                payBtn.disabled = false;
 
-          payBtn.onclick = () => {
-            validateAndSaveAddress(() => {
-              window.initRazorpayCheckout(total, payIds.join(','));
+                const orderId = res.orderId || ('AZ-WA-' + Math.floor(100000 + Math.random() * 900000));
+
+                // Detailed WhatsApp Message
+                let itemsSummary = reqs.map((r, i) => {
+                  const qtyMatch = (r.size || '').match(/\| Qty: (\d+)/);
+                  const reqQty = qtyMatch ? parseInt(qtyMatch[1], 10) : 1;
+                  const cleanSize = (r.size || '').replace(/\| Qty: \d+/, '').trim();
+                  let colorName = (r.color || 'Default').split(' | ')[0];
+                  return `🛍️ *Item ${i + 1}:* ${r.product_name}\n   • *Variant/Color:* ${colorName}\n   • *Size:* ${cleanSize}\n   • *Quantity:* ${reqQty}\n   • *Price:* ₹${r.price * reqQty}`;
+                }).join('\n\n');
+
+                const clientName = (currentUser && currentUser.name) ? currentUser.name : 'Valued Client';
+                const clientPhone = (currentUser && currentUser.phone) ? currentUser.phone : '';
+
+                const waMsg = 
+`✨ *NEW ORDER - AZ FASHION* ✨
+━━━━━━━━━━━━━━━━━━━━━
+👤 *Client Name:* ${clientName}
+📞 *Contact Number:* ${clientPhone}
+📍 *Shipping Address:*
+${savedAddressStr}
+━━━━━━━━━━━━━━━━━━━━━
+📋 *ORDER DETAILS:*
+
+${itemsSummary}
+
+━━━━━━━━━━━━━━━━━━━━━
+💰 *Order Total:* ₹${total} (Complimentary Shipping)
+🔖 *Reference ID:* #${orderId}
+━━━━━━━━━━━━━━━━━━━━━
+💬 _"Assalamu Alaikum / Hello AZ Fashion! I have placed this order on your boutique website. Please confirm availability and guide me with order completion."_`;
+
+                // Close cart modal
+                document.getElementById('requestsModal').classList.remove('active');
+
+                // Open WhatsApp directly
+                const cleanNumber = '918210634488';
+                const waUrl = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(waMsg)}`;
+                window.open(waUrl, '_blank');
+
+                // Show confirmation modal
+                const confModal = document.getElementById('orderConfirmationModal');
+                if (confModal) {
+                  document.getElementById('confirmOrderId').innerText = orderId;
+                  confModal.classList.add('active');
+                }
+                updateMyRequestsBadge();
+              })
+              .catch(err => {
+                payBtn.innerHTML = origPayText;
+                payBtn.disabled = false;
+                console.error('WhatsApp order error:', err);
+                alert('Could not process order. Please try again or reach out directly on WhatsApp.');
+              });
             });
           };
         } else {
           payBtn.style.display = 'none';
-          testPayBtn.style.display = 'none';
+          if (testPayBtn) testPayBtn.style.display = 'none';
         }
       });
   };
