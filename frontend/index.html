@@ -118,20 +118,42 @@
 
 
         <!-- Step 4: Terms and Conditions -->
-        <div id="obStepTC" class="ob-step">
-          <p class="modal-desc" style="text-align: center; margin: 0 auto 30px;">Please agree to our terms before entering.</p>
-          <div class="form" style="max-width: 500px; margin: 0 auto; text-align: left; padding: 25px; background: rgba(255,255,255,0.05); border-radius: 12px; border: 1px solid rgba(255,215,0,0.2);">
-            <h3 style="color: var(--gold); margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px;">Terms & Conditions</h3>
-            <p style="margin-bottom: 15px; font-size: 0.9rem; line-height: 1.6; color: rgba(255,255,255,0.9);">An <strong>unboxing video is strictly mandatory</strong> in all circumstances. Upon receipt of your order, an unboxing video must be recorded and submitted to official WhatsApp channels.</p>
-            <p style="margin-bottom: 15px; font-size: 0.9rem; line-height: 1.6; color: rgba(255,255,255,0.9);">Products shall <strong>only be eligible for replacement</strong> in the event of a verified manufacturing defect or damage sustained during transit, as evidenced by the aforementioned unboxing video.</p>
-            <p style="color: #ff4d4d; font-weight: bold; font-size: 0.9rem; margin-bottom: 25px; line-height: 1.6;">Please note that under no circumstances will refunds be issued. Any issues reported without accompanying video evidence will not be entertained.</p>
-            
-            <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; color: #fff; font-size: 0.85rem; margin-bottom: 20px;">
-              <input type="checkbox" id="obTcCheckbox" style="margin-top: 3px;">
-              <span>I have read and agree to these terms.</span>
-            </label>
-            
-            <button id="obTcSubmitBtn" class="button-submit" style="width: 100%;">Enter Boutique</button>
+        <div id="obStepTC" class="ob-step tc-step-wrapper">
+          <div class="tc-card">
+            <div class="tc-header">
+              <span class="tc-badge"><i class="fas fa-shield-alt"></i> Policy</span>
+              <h3 class="tc-title">Terms & Conditions</h3>
+              <p class="tc-subtitle">Please review and agree to boutique policy to continue.</p>
+            </div>
+
+            <!-- Scrollable terms text box -->
+            <div class="tc-body">
+              <div class="tc-item">
+                <i class="fas fa-video tc-icon"></i>
+                <p>An <strong>unboxing video is strictly mandatory</strong> upon receipt of your parcel. The video must show unbroken packaging and opening.</p>
+              </div>
+              <div class="tc-item">
+                <i class="fas fa-sync-alt tc-icon"></i>
+                <p>Pieces are <strong>only eligible for replacement</strong> in the event of a verified manufacturing defect or transit damage proven via unboxing video.</p>
+              </div>
+              <div class="tc-item warning">
+                <i class="fas fa-exclamation-triangle tc-icon"></i>
+                <p><strong>Strict No-Refund Policy:</strong> Under no circumstances are monetary refunds issued. Requests without video proof cannot be entertained.</p>
+              </div>
+            </div>
+
+            <!-- Fixed action area: Always visible on both mobile & desktop -->
+            <div class="tc-footer">
+              <label class="tc-agree-label" for="obTcCheckbox">
+                <input type="checkbox" id="obTcCheckbox" checked>
+                <span>I have read and agree to these Terms & Conditions.</span>
+              </label>
+              
+              <button id="obTcSubmitBtn" type="button" class="tc-enter-btn">
+                <span>Enter Boutique</span>
+                <i class="fas fa-arrow-right"></i>
+              </button>
+            </div>
           </div>
         </div>
 
