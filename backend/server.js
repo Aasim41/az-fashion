@@ -100,13 +100,28 @@ async function uploadToSupabaseStorage(file) {
   return publicData.publicUrl;
 }
 
+// Helper to extract bearer token from standard headers, custom headers, or query parameters
+function extractAuthToken(req) {
+  const raw = req.headers['authorization'] || 
+              req.headers['x-authorization'] || 
+              req.headers['x-admin-token'] || 
+              req.headers['x-user-token'];
+  if (raw && typeof raw === 'string') {
+    if (raw.startsWith('Bearer ')) return raw.slice(7).trim();
+    return raw.trim();
+  }
+  if (req.query && req.query.token) {
+    return String(req.query.token).trim();
+  }
+  return null;
+}
+
 // 5. Admin Authentication Middleware
 const authenticateAdmin = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  const token = extractAuthToken(req);
+  if (!token) {
     return res.status(401).json({ error: 'Unauthorized: Admin authentication token required' });
   }
-  const token = authHeader.split(' ')[1];
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     if (decoded.role !== 'admin') {
@@ -331,8 +346,7 @@ app.post('/api/inquiries', async (req, res) => {
 
 // Helper middleware for Single-Device Restriction (Scenario B)
 function authenticateUser(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  const token = extractAuthToken(req);
   if (!token) return next();
 
   jwt.verify(token, JWT_SECRET, async (err, decoded) => {
@@ -461,8 +475,7 @@ app.post('/api/auth/login', async (req, res) => {
 
 // 9. Verify Active Session (Used for live single-device kickout)
 app.get('/api/auth/verify-session', (req, res) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  const token = extractAuthToken(req);
   if (!token) return res.status(401).json({ error: 'NO_TOKEN' });
 
   jwt.verify(token, JWT_SECRET, async (err, decoded) => {

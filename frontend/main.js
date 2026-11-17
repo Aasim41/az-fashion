@@ -89,7 +89,11 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
 
   function getUserAuthHeaders() {
     const token = localStorage.getItem('az_token');
-    return token ? { 'Authorization': `Bearer ${token}` } : {};
+    return token ? { 
+      'Authorization': `Bearer ${token}`,
+      'x-authorization': `Bearer ${token}`,
+      'x-user-token': token
+    } : {};
   }
 
   function handleSessionTerminated() {
@@ -104,9 +108,12 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
     if (!currentUser || !currentUser.id || !localStorage.getItem('az_token')) return;
     fetch('/api/auth/verify-session', {
       headers: getUserAuthHeaders()
-    }).then(r => {
+    }).then(async r => {
       if (r.status === 401) {
-        handleSessionTerminated();
+        const body = await r.json().catch(() => ({}));
+        if (body.error === 'SESSION_TERMINATED') {
+          handleSessionTerminated();
+        }
       }
     }).catch(() => {});
   }
@@ -246,14 +253,18 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
   const onboardingFlow = document.getElementById('onboardingFlow');
   const mainSite = document.getElementById('mainSite');
   
+  const tcAccepted = localStorage.getItem('az_tc_accepted') === 'true' || (currentUser && currentUser.tcAccepted);
+
   if (currentUser) {
-    if (!currentUser.tcAccepted) {
+    if (!tcAccepted) {
       onboardingFlow.classList.add('active');
       document.getElementById('obStepAuth').classList.remove('active');
       document.getElementById('obStepTC').classList.add('active');
     } else {
       onboardingFlow.classList.remove('active');
+      onboardingFlow.style.display = 'none';
       mainSite.style.display = 'block';
+      document.body.style.overflow = 'auto';
     }
   } else {
     // Show onboarding
@@ -934,6 +945,22 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
   };
 
   function unlockMainSite() {
+    const isTcAlreadyAccepted = localStorage.getItem('az_tc_accepted') === 'true' || (currentUser && currentUser.tcAccepted);
+    if (isTcAlreadyAccepted) {
+      const onboardingFlow = document.getElementById('onboardingFlow');
+      if (onboardingFlow) {
+        onboardingFlow.classList.remove('active');
+        onboardingFlow.style.display = 'none';
+      }
+      const mainSite = document.getElementById('mainSite');
+      if (mainSite) {
+        mainSite.style.display = 'block';
+        mainSite.style.opacity = '1';
+      }
+      document.body.style.overflow = 'auto';
+      return;
+    }
+
     document.getElementById('obStepAuth').classList.remove('active');
     setTimeout(() => {
       document.getElementById('obStepTC').classList.add('active');
@@ -942,27 +969,38 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
 
   document.getElementById('obTcSubmitBtn')?.addEventListener('click', (e) => {
     e.preventDefault();
-    if (!document.getElementById('obTcCheckbox').checked) {
-      alert("You must agree to the Terms & Conditions before entering.");
+    const checkbox = document.getElementById('obTcCheckbox');
+    if (checkbox && !checkbox.checked) {
+      alert("Please check 'I have read and agree to these terms' to enter.");
       return;
     }
     
+    localStorage.setItem('az_tc_accepted', 'true');
     if (currentUser) {
       currentUser.tcAccepted = true;
       localStorage.setItem('az_user', JSON.stringify(currentUser));
     }
 
     if ("Notification" in window && Notification.permission === "default") {
-      try { Notification.requestPermission().catch(() => {}); } catch(e) {}
+      try { Notification.requestPermission().catch(() => {}); } catch(err) {}
     }
 
     const onboardingFlow = document.getElementById('onboardingFlow');
-    onboardingFlow.style.opacity = '0';
-    setTimeout(() => {
-      onboardingFlow.classList.remove('active');
-      onboardingFlow.style.display = 'none';
-      document.getElementById('mainSite').style.display = 'block';
-    }, 800);
+    const mainSite = document.getElementById('mainSite');
+    if (onboardingFlow) {
+      onboardingFlow.style.opacity = '0';
+      onboardingFlow.style.pointerEvents = 'none';
+      setTimeout(() => {
+        onboardingFlow.classList.remove('active');
+        onboardingFlow.style.display = 'none';
+        if (mainSite) {
+          mainSite.style.display = 'block';
+          mainSite.style.opacity = '1';
+        }
+        document.body.style.overflow = 'auto';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 400);
+    }
   });
 
   // 2. Product Details Flow

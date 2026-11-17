@@ -1,7 +1,11 @@
-console.log("Admin Dashboard Loaded - Version 4");
+console.log("Admin Dashboard Loaded - Version 5");
 function getAuthHeaders() {
   const token = sessionStorage.getItem('az_admin_token');
-  return token ? { 'Authorization': `Bearer ${token}` } : {};
+  return token ? { 
+    'Authorization': `Bearer ${token}`,
+    'x-authorization': `Bearer ${token}`,
+    'x-admin-token': token
+  } : {};
 }
 
 function handleAuthError(res) {
