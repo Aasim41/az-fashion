@@ -258,10 +258,12 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
   if (currentUser) {
     if (!tcAccepted) {
       onboardingFlow.classList.add('active');
+      onboardingFlow.classList.add('tc-mode');
       document.getElementById('obStepAuth').classList.remove('active');
       document.getElementById('obStepTC').classList.add('active');
     } else {
       onboardingFlow.classList.remove('active');
+      onboardingFlow.classList.remove('tc-mode');
       onboardingFlow.style.display = 'none';
       mainSite.style.display = 'block';
       document.body.style.overflow = 'auto';
@@ -963,6 +965,8 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
 
     document.getElementById('obStepAuth').classList.remove('active');
     setTimeout(() => {
+      const obFlow = document.getElementById('onboardingFlow');
+      if (obFlow) obFlow.classList.add('tc-mode');
       document.getElementById('obStepTC').classList.add('active');
     }, 300);
   }
@@ -992,6 +996,7 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
       onboardingFlow.style.pointerEvents = 'none';
       setTimeout(() => {
         onboardingFlow.classList.remove('active');
+        onboardingFlow.classList.remove('tc-mode');
         onboardingFlow.style.display = 'none';
         if (mainSite) {
           mainSite.style.display = 'block';
