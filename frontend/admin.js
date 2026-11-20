@@ -494,56 +494,196 @@ document.getElementById('editColorVariantBtn')?.addEventListener('click', () => 
   createColorVariantRow('editColorVariantContainer');
 });
 
-document.getElementById('addProductForm').addEventListener('submit', (e) => {
+// Smart image upload helper:
+// 1. Resizes massive camera photos (e.g. 10MB-50MB) down to ultra-crisp 4K 2400px resolution using HTML5 canvas
+// 2. Obtains a presigned Supabase upload URL and PUTs the file directly to Supabase Storage
+// 3. Completely bypasses Vercel's 4.5MB request limit so files of ANY size (up to 50MB+) upload smoothly!
+
+async function compressImageIfLarge(file) {
+  if (!file.type || !file.type.startsWith('image/') || file.size < 1.5 * 1024 * 1024) {
+    return file;
+  }
+  return new Promise((resolve) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      img.onload = () => {
+        try {
+          const maxDim = 2400; // Ultra high-res e-commerce retina quality
+          let width = img.width;
+          let height = img.height;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob((blob) => {
+            if (blob && blob.size < file.size) {
+              const optimizedFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), {
+                type: 'image/jpeg',
+                lastModified: Date.now()
+              });
+              resolve(optimizedFile);
+            } else {
+              resolve(file);
+            }
+          }, 'image/jpeg', 0.88);
+        } catch(err) {
+          console.warn('Canvas compression fallback to original:', err);
+          resolve(file);
+        }
+      };
+      img.onerror = () => resolve(file);
+      img.src = e.target.result;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadFileToSupabase(file, onProgressText) {
+  if (onProgressText) onProgressText(`Optimizing ${file.name}...`);
+  const optimized = await compressImageIfLarge(file);
+
+  if (onProgressText) onProgressText(`Uploading ${file.name} to cloud storage...`);
+  
+  // 1. Get signed direct upload URL from backend
+  const sigRes = await fetch('/api/admin/signed-upload-url', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders()
+    },
+    body: JSON.stringify({
+      filename: optimized.name,
+      contentType: optimized.type || 'image/jpeg'
+    })
+  });
+
+  if (!sigRes.ok) {
+    const errData = await sigRes.json().catch(() => ({}));
+    throw new Error(errData.error || `Failed to initiate upload for ${file.name}`);
+  }
+
+  const { signedUrl, publicUrl } = await sigRes.json();
+
+  // 2. PUT file directly to Supabase Storage (zero serverless payload limits)
+  const putRes = await fetch(signedUrl, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': optimized.type || 'image/jpeg'
+    },
+    body: optimized
+  });
+
+  if (!putRes.ok) {
+    throw new Error(`Direct storage upload failed with status ${putRes.status}`);
+  }
+
+  return publicUrl;
+}
+
+document.getElementById('addProductForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   
-  const formData = new FormData();
-  formData.append('name', document.getElementById('addName').value);
-  formData.append('description', document.getElementById('addDesc').value);
-  formData.append('price', document.getElementById('addPrice').value);
-  formData.append('collection_id', document.getElementById('addCollection').value);
-  formData.append('sizes', extractSizes('addSizeContainer'));
-  
+  const submitBtn = document.getElementById('addProdSubmitBtn') || e.target.querySelector('button[type="submit"]');
+  const originalBtnText = submitBtn ? submitBtn.innerText : 'Upload Product';
   
   const variants = document.querySelectorAll('#addColorVariantContainer .color-variant-row');
   if (variants.length === 0) return alert("Please add at least one color variant and its images.");
   
-  let colorsArr = [];
-  let fileCount = 0;
+  // Collect all files
+  let allFilesToUpload = [];
+  let variantFileMap = [];
   
   variants.forEach(row => {
-    const name = row.querySelector('.var-name').value.trim();
-    const files = row.querySelector('.var-files').files;
+    const name = row.querySelector('.var-name').value.trim() || 'Default';
+    const files = Array.from(row.querySelector('.var-files').files);
     if (files.length > 0) {
-      colorsArr.push({ name: name || 'Default', index: fileCount, count: files.length });
-      for(let i = 0; i < files.length; i++) {
-        formData.append('images', files[i]);
-        fileCount++;
-      }
+      variantFileMap.push({ name, files });
+      allFilesToUpload.push(...files);
     }
   });
-  
-  if (fileCount === 0) return alert("Please select images for your variants.");
-  formData.append('colors', JSON.stringify(colorsArr));
 
+  if (allFilesToUpload.length === 0) return alert("Please select images for your variants.");
 
-  fetch('/api/admin/products', {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: formData
-  }).then(async r => {
-    if (handleAuthError(r)) return;
-    const res = await r.json();
-    if(res.error) return alert(res.error);
-    alert('Product uploaded successfully!');
+  try {
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.style.opacity = '0.7';
+    }
+
+    // Direct cloud upload for all files with live progress
+    let uploadedUrls = [];
+    for (let i = 0; i < allFilesToUpload.length; i++) {
+      const file = allFilesToUpload[i];
+      const publicUrl = await uploadFileToSupabase(file, (msg) => {
+        if (submitBtn) submitBtn.innerText = `[${i + 1}/${allFilesToUpload.length}] ${msg}`;
+      });
+      uploadedUrls.push(publicUrl);
+    }
+
+    if (submitBtn) submitBtn.innerText = 'Saving product...';
+
+    // Map color variants to the uploaded image indices
+    let colorsArr = [];
+    let currentIndex = 0;
+    variantFileMap.forEach(v => {
+      colorsArr.push({
+        name: v.name,
+        index: currentIndex,
+        count: v.files.length
+      });
+      currentIndex += v.files.length;
+    });
+
+    const payload = {
+      name: document.getElementById('addName').value,
+      description: document.getElementById('addDesc').value,
+      price: document.getElementById('addPrice').value,
+      collection_id: document.getElementById('addCollection').value,
+      sizes: extractSizes('addSizeContainer'),
+      colors: JSON.stringify(colorsArr),
+      image_urls: JSON.stringify(uploadedUrls)
+    };
+
+    const res = await fetch('/api/admin/products', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (handleAuthError(res)) return;
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    alert('✨ Product and high-resolution images uploaded successfully!');
     document.getElementById('addProductForm').reset();
     const addVariantCont = document.getElementById('addColorVariantContainer');
     if (addVariantCont) addVariantCont.innerHTML = '';
     loadProducts();
-  }).catch(err => {
-    console.error(err);
-    alert('Upload failed. Please check image format and size (max 5MB each).');
-  });
+  } catch (err) {
+    console.error('Add product error:', err);
+    alert('Upload error: ' + (err.message || 'Please check your connection and try again.'));
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.style.opacity = '1';
+      submitBtn.innerText = originalBtnText;
+    }
+  }
 });
 
 // Edit Product Open Modal
@@ -573,59 +713,96 @@ window.openEditProduct = (encodedProduct) => {
   document.getElementById('editProductModal').style.display = 'flex';
 };
 
-// Edit Product Submit (Multiple images support)
-document.getElementById('editProductForm').addEventListener('submit', (e) => {
+// Edit Product Submit (Multiple images support with direct storage uploads)
+document.getElementById('editProductForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const id = document.getElementById('editId').value;
-  
-  const formData = new FormData();
-  formData.append('name', document.getElementById('editName').value);
-  formData.append('description', document.getElementById('editDesc').value);
-  formData.append('price', document.getElementById('editPrice').value);
-  formData.append('collection_id', document.getElementById('editCollection').value);
-  formData.append('sizes', extractSizes('editSizeContainer'));
-  
+  const submitBtn = document.getElementById('editProdSubmitBtn') || e.target.querySelector('button[type="submit"]');
+  const originalBtnText = submitBtn ? submitBtn.innerText : 'Save Changes';
   
   const variants = document.querySelectorAll('#editColorVariantContainer .color-variant-row');
+  let allFilesToUpload = [];
+  let variantFileMap = [];
+  
   if (variants.length > 0) {
-    let colorsArr = [];
-    let fileCount = 0;
-    let validFiles = false;
-    
     variants.forEach(row => {
-      const name = row.querySelector('.var-name').value.trim();
-      const files = row.querySelector('.var-files').files;
+      const name = row.querySelector('.var-name').value.trim() || 'Default';
+      const files = Array.from(row.querySelector('.var-files').files);
       if (files.length > 0) {
-        validFiles = true;
-        colorsArr.push({ name: name || 'Default', index: fileCount, count: files.length });
-        for(let i = 0; i < files.length; i++) {
-          formData.append('images', files[i]);
-          fileCount++;
-        }
+        variantFileMap.push({ name, files });
+        allFilesToUpload.push(...files);
       }
     });
-    
-    if (validFiles) {
-      formData.append('colors', JSON.stringify(colorsArr));
-    }
   }
 
+  try {
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.style.opacity = '0.7';
+    }
 
-  fetch('/api/admin/products/' + id, {
-    method: 'PUT',
-    headers: getAuthHeaders(),
-    body: formData
-  }).then(async r => {
-    if (handleAuthError(r)) return;
-    const res = await r.json();
-    if(res.error) return alert(res.error);
+    const payload = {
+      name: document.getElementById('editName').value,
+      description: document.getElementById('editDesc').value,
+      price: document.getElementById('editPrice').value,
+      collection_id: document.getElementById('editCollection').value,
+      sizes: extractSizes('editSizeContainer')
+    };
+
+    // If new images were provided, upload them directly to storage
+    if (allFilesToUpload.length > 0) {
+      let uploadedUrls = [];
+      for (let i = 0; i < allFilesToUpload.length; i++) {
+        const file = allFilesToUpload[i];
+        const publicUrl = await uploadFileToSupabase(file, (msg) => {
+          if (submitBtn) submitBtn.innerText = `[${i + 1}/${allFilesToUpload.length}] ${msg}`;
+        });
+        uploadedUrls.push(publicUrl);
+      }
+
+      let colorsArr = [];
+      let currentIndex = 0;
+      variantFileMap.forEach(v => {
+        colorsArr.push({
+          name: v.name,
+          index: currentIndex,
+          count: v.files.length
+        });
+        currentIndex += v.files.length;
+      });
+
+      payload.colors = JSON.stringify(colorsArr);
+      payload.image_urls = JSON.stringify(uploadedUrls);
+    }
+
+    if (submitBtn) submitBtn.innerText = 'Saving changes...';
+
+    const res = await fetch('/api/admin/products/' + id, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (handleAuthError(res)) return;
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
     alert('Product updated successfully!');
     document.getElementById('editProductModal').style.display = 'none';
     loadProducts();
-  }).catch(err => {
-    console.error(err);
-    alert('Update failed');
-  });
+  } catch (err) {
+    console.error('Update product error:', err);
+    alert('Update failed: ' + (err.message || 'Please check your connection and try again.'));
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.style.opacity = '1';
+      submitBtn.innerText = originalBtnText;
+    }
+  }
 });
 
 // Delete Product
