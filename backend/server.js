@@ -27,7 +27,8 @@ app.use(helmet({
 
 // 2. CORS and Body Parsing
 app.use(cors());
-app.use(express.json({ limit: '5mb' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // 3. Brute Force & Rate Limiting Protection
 const authLimiter = rateLimit({
@@ -63,7 +64,7 @@ app.use('/api/', (req, res, next) => {
 // 4. Secure File Upload with Multer in Memory for Cloud Storage
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB max file size
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100 MB max file size
   fileFilter: (req, file, cb) => {
     const allowedExts = ['.jpg', '.jpeg', '.png', '.webp'];
     const ext = path.extname(file.originalname).toLowerCase();
@@ -214,12 +215,58 @@ app.get('/api/products', async (req, res) => {
   }
 });
 
-// 3. Admin: Add Product (Multiple images uploaded directly to Supabase Storage)
+// 3. Admin: Generate Signed Direct Upload URL for Supabase Storage (Unlimited file size up to 100MB+)
+app.post('/api/admin/signed-upload-url', authenticateAdmin, async (req, res) => {
+  try {
+    const { filename, contentType } = req.body;
+    if (!filename) {
+      return res.status(400).json({ error: 'Filename is required' });
+    }
+    const ext = path.extname(filename).toLowerCase() || '.jpg';
+    const cleanBase = path.basename(filename, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
+    const storageFilename = `prod_${Date.now()}_${Math.round(Math.random() * 1e6)}_${cleanBase}${ext}`;
+
+    const { data, error } = await supabase.storage
+      .from('product-images')
+      .createSignedUploadUrl(storageFilename);
+
+    if (error) {
+      console.error('Supabase signed URL error:', error);
+      throw error;
+    }
+
+    const { data: publicData } = supabase.storage
+      .from('product-images')
+      .getPublicUrl(storageFilename);
+
+    res.json({
+      signedUrl: data.signedUrl,
+      publicUrl: publicData.publicUrl,
+      filename: storageFilename
+    });
+  } catch (err) {
+    console.error('Error generating signed upload URL:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 4. Admin: Add Product (Supports pre-uploaded image_urls and direct multipart files)
 app.post('/api/admin/products', authenticateAdmin, upload.array('images', 50), async (req, res) => {
   try {
-    const { name, description, price, collection_id, sizes, category } = req.body;
+    const { name, description, price, collection_id, sizes, category, image_urls } = req.body;
     let imageUrls = [];
 
+    // Check for pre-uploaded image URLs (from direct storage uploads)
+    if (image_urls) {
+      try {
+        const parsed = typeof image_urls === 'string' ? JSON.parse(image_urls) : image_urls;
+        if (Array.isArray(parsed)) imageUrls = imageUrls.concat(parsed);
+      } catch (e) {
+        if (typeof image_urls === 'string' && image_urls.trim()) imageUrls.push(image_urls.trim());
+      }
+    }
+
+    // Direct files upload fallback
     const files = req.files || (req.file ? [req.file] : []);
     for (const file of files) {
       const publicUrl = await uploadToSupabaseStorage(file);
