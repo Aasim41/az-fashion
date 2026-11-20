@@ -326,7 +326,7 @@ app.delete('/api/admin/products/:id', authenticateAdmin, async (req, res) => {
 // 5. Admin: Update Product (Multiple images support with Supabase Storage)
 app.put('/api/admin/products/:id', authenticateAdmin, upload.array('images', 50), async (req, res) => {
   try {
-    const { name, description, price, collection_id, sizes, colors } = req.body;
+    const { name, description, price, collection_id, sizes, colors, image_urls } = req.body;
     let sizesArr = [];
     if (sizes) {
       try { sizesArr = JSON.parse(sizes); } 
@@ -349,6 +349,16 @@ app.put('/api/admin/products/:id', authenticateAdmin, upload.array('images', 50)
       }
     } else if (colors === '') {
       updateData.colors = JSON.stringify([]);
+    }
+
+    // Pre-uploaded URLs support
+    if (image_urls) {
+      try {
+        const parsed = typeof image_urls === 'string' ? JSON.parse(image_urls) : image_urls;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          updateData.image_url = JSON.stringify(parsed);
+        }
+      } catch (e) {}
     }
 
     const files = req.files || (req.file ? [req.file] : []);
