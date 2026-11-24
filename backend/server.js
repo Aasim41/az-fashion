@@ -52,12 +52,18 @@ app.use('/api/admin/login', authLimiter);
 // Note: /api/auth/verify-session is intentionally omitted from authLimiter because it is polled by clients.
 
 
-// Prevent proxy, carrier NAT, and CDN caching on dynamic API routes
+// Intelligent HTTP Caching:
+// - Public read-only catalog routes (/api/products, /api/collections) benefit from Edge CDN caching for fast loading
+// - Private, auth, cart, and admin routes strictly enforce no-store/no-cache
 app.use('/api/', (req, res, next) => {
-  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-  res.set('Pragma', 'no-cache');
-  res.set('Expires', '0');
-  res.set('Surrogate-Control', 'no-store');
+  if (req.method === 'GET' && (req.path === '/products' || req.path === '/collections')) {
+    res.set('Cache-Control', 'public, max-age=15, s-maxage=60, stale-while-revalidate=120');
+  } else {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    res.set('Surrogate-Control', 'no-store');
+  }
   next();
 });
 
@@ -175,7 +181,10 @@ app.get('/api/products', async (req, res) => {
     let query = supabase.from('products').select('*');
 
     if (collection_id) query = query.eq('collection_id', parseInt(collection_id, 10));
-    if (search) query = query.ilike('name', `%${search}%`);
+    if (search && search.trim()) {
+      const cleanSearch = search.replace(/[%_]/g, '').trim();
+      if (cleanSearch) query = query.ilike('name', `%${cleanSearch}%`);
+    }
     if (min_price) query = query.gte('price', parseFloat(min_price));
     if (max_price) query = query.lte('price', parseFloat(max_price));
 
@@ -497,10 +506,19 @@ app.post('/api/auth/login', async (req, res) => {
   }
 
   try {
-    const { data: users, error: findErr } = await supabase
-      .from('users')
-      .select('*')
-      .or(`email.ilike.${loginKey},phone.eq.${loginKey}`);
+    let users = null;
+    let findErr = null;
+
+    if (loginKey.includes('@')) {
+      const resDb = await supabase.from('users').select('*').ilike('email', loginKey);
+      users = resDb.data;
+      findErr = resDb.error;
+    } else {
+      const cleanPhone = loginKey.replace(/[^0-9+]/g, '');
+      const resDb = await supabase.from('users').select('*').or(`phone.eq.${cleanPhone || loginKey},email.ilike.${loginKey}`);
+      users = resDb.data;
+      findErr = resDb.error;
+    }
 
     if (findErr || !users || users.length === 0) {
       return res.status(401).json({ error: "Account doesn't exist. Please sign up." });
@@ -589,10 +607,13 @@ app.post('/api/auth/reset-password', async (req, res) => {
 app.post('/api/user/address', authenticateUser, async (req, res) => {
   try {
     const { user_id, name, address } = req.body;
+    const targetUserId = req.user ? req.user.id : user_id;
+    if (!targetUserId) return res.status(400).json({ error: 'User ID required' });
+
     const { error } = await supabase
       .from('users')
       .update({ name, address })
-      .eq('id', user_id);
+      .eq('id', targetUserId);
 
     if (error) throw error;
     res.json({ message: 'Address updated' });
@@ -606,6 +627,9 @@ app.post('/api/user/address', authenticateUser, async (req, res) => {
 app.delete('/api/user/:id', authenticateUser, async (req, res) => {
   try {
     const { id } = req.params;
+    if (req.user && String(req.user.id) !== String(id)) {
+      return res.status(403).json({ error: 'Forbidden: You can only delete your own account.' });
+    }
     await supabase.from('requests').delete().eq('user_id', id);
     const { error } = await supabase.from('users').delete().eq('id', id);
     if (error) throw error;
@@ -1035,7 +1059,7 @@ app.post('/api/products/:id/reviews', async (req, res) => {
 // 22. Admin: Analytics Dashboard
 app.get('/api/admin/analytics', authenticateAdmin, async (req, res) => {
   try {
-    const { data: requests, error: rErr } = await supabase.from('requests').select('*');
+    const { data: requests, error: rErr } = await supabase.from('requests').select('id, product_id, status, created_at');
     if (rErr) throw rErr;
     
     let totalRevenue = 0;
@@ -1083,7 +1107,7 @@ app.get('/api/admin/analytics', authenticateAdmin, async (req, res) => {
 app.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ error: 'File too large. Maximum allowed size is 10MB.' });
+      return res.status(400).json({ error: 'File too large. Maximum allowed size is 100MB.' });
     }
     return res.status(400).json({ error: `File upload error: ${err.message}` });
   } else if (err) {

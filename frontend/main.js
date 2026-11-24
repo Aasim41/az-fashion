@@ -209,13 +209,22 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
     }
   }
 
-  // Poll for request updates, notifications, and verify active single-device session every 15 seconds
-  setInterval(() => {
-    if (currentUser && currentUser.id) {
+  // Intelligent Poller: Verifies active single-device session and updates notifications & badge
+  // Automatically pauses when tab is backgrounded to eliminate unnecessary network traffic and save battery
+  function runClientPoller() {
+    if (currentUser && currentUser.id && !document.hidden) {
       verifyActiveSession();
       updateMyRequestsBadge();
     }
-  }, 15000);
+  }
+
+  setInterval(runClientPoller, 25000);
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && currentUser && currentUser.id) {
+      runClientPoller(); // Instant sync upon refocusing tab
+    }
+  });
 
   // Request Web Notification permission as soon as opening the website
   function initNotificationPermission() {

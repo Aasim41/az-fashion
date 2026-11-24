@@ -77,8 +77,16 @@ let adminPollerTimer = null;
 function startAdminRequestPoller() {
   if (adminPollerTimer) clearInterval(adminPollerTimer);
   checkNewRequests();
-  adminPollerTimer = setInterval(checkNewRequests, 45000); // Check every 45 seconds
+  adminPollerTimer = setInterval(() => {
+    if (!document.hidden) checkNewRequests();
+  }, 45000); // Check every 45 seconds when visible
 }
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && sessionStorage.getItem('az_admin_token')) {
+    checkNewRequests(); // Immediate sync on admin tab focus
+  }
+});
 
 function checkNewRequests() {
   if (!sessionStorage.getItem('az_admin_token')) return;
