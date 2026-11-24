@@ -1015,6 +1015,17 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
     selectedProduct = prod;
     selectedSize = null;
     selectedColor = null;
+
+    // Check if Unstitched Suits (Category ID 8 or "Unstitched" in name or sizes)
+    const isUnstitched = (prod.collection_id === 8) || 
+      (prod.name && prod.name.toLowerCase().includes('unstitched')) || 
+      (prod.sizes && prod.sizes.some(s => (typeof s === 'object' ? s.name : s).toLowerCase().includes('unstitched'))) || 
+      (!prod.sizes || prod.sizes.length === 0);
+
+    if (isUnstitched) {
+      selectedSize = 'Unstitched';
+      selectedColor = 'Unstitched';
+    }
     
     document.getElementById('pdName').innerText = prod.name;
     document.getElementById('pdDesc').innerText = prod.description;
@@ -1106,17 +1117,20 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
       allImages = [prod.image_url || '/images/col_daily.png'];
     }
     
-    if (colorContainerWrap && colorsContainer) {
+    if (isUnstitched) {
+      if (colorContainerWrap) colorContainerWrap.style.display = 'none';
+      if (colorsContainer) colorsContainer.innerHTML = '';
+      selectedColor = 'Unstitched';
+    } else if (colorContainerWrap && colorsContainer) {
       let colorsArr = [];
       if (prod.colors) {
         try { colorsArr = typeof prod.colors === 'string' ? JSON.parse(prod.colors) : prod.colors; } catch(e) {}
       }
       
-      // If it's the old flat array format, we just map it.
-      // If it's the new object format, we map it too.
+      // Filter out 'default' and 'unstitched'
       colorsArr = colorsArr.filter(c => {
-        if (typeof c === 'string') return c && c.toLowerCase() !== 'default';
-        if (typeof c === 'object' && c.name) return c.name.toLowerCase() !== 'default';
+        if (typeof c === 'string') return c && c.toLowerCase() !== 'default' && c.toLowerCase() !== 'unstitched';
+        if (typeof c === 'object' && c.name) return c.name.toLowerCase() !== 'default' && c.name.toLowerCase() !== 'unstitched';
         return false;
       });
       
@@ -1186,12 +1200,6 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
         colorContainerWrap.style.display = 'none';
       }
     }
-
-    // Check if Unstitched Suits (Category ID 8 or "Unstitched" in name or sizes)
-    const isUnstitched = (prod.collection_id === 8) || 
-      (prod.name && prod.name.toLowerCase().includes('unstitched')) || 
-      (prod.sizes && prod.sizes.some(s => (typeof s === 'object' ? s.name : s).toLowerCase().includes('unstitched'))) || 
-      (!prod.sizes || prod.sizes.length === 0);
 
     const sizeWrap = document.getElementById('pdSizeWrap');
     if (isUnstitched) {
@@ -1382,14 +1390,6 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
   const pdRequestBtn = document.getElementById('pdRequestBtn');
   if (pdRequestBtn) {
     pdRequestBtn.addEventListener('click', () => {
-      let colorsArr = [];
-      if (selectedProduct && selectedProduct.colors) {
-        try { colorsArr = typeof selectedProduct.colors === 'string' ? JSON.parse(selectedProduct.colors) : selectedProduct.colors; } catch(e) {}
-      }
-      colorsArr = colorsArr.filter(c => c && (typeof c === 'string' ? c.toLowerCase() !== 'default' : c.name && c.name.toLowerCase() !== 'default'));
-      
-      if (colorsArr.length > 0 && !selectedColor) return alert('Please select a color variant.');
-
       const isUnstitched = (selectedProduct.collection_id === 8) || 
         (selectedProduct.name && selectedProduct.name.toLowerCase().includes('unstitched')) ||
         (selectedProduct.sizes && selectedProduct.sizes.some(s => (typeof s === 'object' ? s.name : s).toLowerCase().includes('unstitched'))) || 
@@ -1397,9 +1397,18 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
 
       if (isUnstitched) {
         selectedSize = 'Unstitched';
+        selectedColor = 'Unstitched';
+      } else {
+        let colorsArr = [];
+        if (selectedProduct && selectedProduct.colors) {
+          try { colorsArr = typeof selectedProduct.colors === 'string' ? JSON.parse(selectedProduct.colors) : selectedProduct.colors; } catch(e) {}
+        }
+        colorsArr = colorsArr.filter(c => c && (typeof c === 'string' ? c.toLowerCase() !== 'default' && c.toLowerCase() !== 'unstitched' : c.name && c.name.toLowerCase() !== 'default' && c.name.toLowerCase() !== 'unstitched'));
+        
+        if (colorsArr.length > 0 && !selectedColor) return alert('Please select a color variant.');
+        if (!selectedSize) return alert('Please select a size.');
       }
 
-      if (!isUnstitched && !selectedSize) return alert('Please select a size.');
       submitRequest();
     });
   }
@@ -1616,6 +1625,11 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
             </div>`;
           }
 
+          const isItemUnstitched = (r.size || '').toLowerCase().includes('unstitched') || (r.product_name || '').toLowerCase().includes('unstitched') || (r.color || '').toLowerCase() === 'unstitched';
+          const sizeDisplay = isItemUnstitched 
+            ? `Type: <strong>Unstitched Suit (Free Size)${reqQty > 1 ? ` &bull; Qty: ${reqQty}` : ''}</strong>`
+            : `Size/Qty: <strong>${r.size}</strong>`;
+
           let reqImg = r.image_url || '/images/col_daily.png';
           try {
             if (reqImg.startsWith('[')) {
@@ -1629,7 +1643,7 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
               <img src="${reqImg}" alt="${r.product_name}" style="width: 70px; height: 90px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); flex-shrink: 0;">
               <div style="flex: 1; min-width: 0; text-align: left; padding-right: 28px;">
                 <span style="display: block; font-weight: 600; color: var(--gold); font-size: 1.05rem; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${r.product_name}</span>
-                <p style="margin: 0 0 5px 0; font-size: 0.9rem; opacity: 0.9;">Size/Qty: <strong>${r.size}</strong> &bull; <strong style="color: var(--gold);">₹${r.price * reqQty}</strong></p>
+                <p style="margin: 0 0 5px 0; font-size: 0.9rem; opacity: 0.9;">${sizeDisplay} &bull; <strong style="color: var(--gold);">₹${r.price * reqQty}</strong></p>
                 <div><span style="font-size: 0.8rem; opacity: 0.7;">Status: </span>${statusText}</div>
                 ${extraInfo}
               </div>
@@ -1674,7 +1688,14 @@ document.getElementById('filterSearch')?.addEventListener('keypress', (e) => {
                   const reqQty = qtyMatch ? parseInt(qtyMatch[1], 10) : 1;
                   const cleanSize = (r.size || '').replace(/\| Qty: \d+/, '').trim();
                   let colorName = (r.color || 'Default').split(' | ')[0];
-                  return `🛍️ *Item ${i + 1}:* ${r.product_name}\n   • *Variant/Color:* ${colorName}\n   • *Size:* ${cleanSize}\n   • *Quantity:* ${reqQty}\n   • *Price:* ₹${r.price * reqQty}`;
+                  const isItemUnstitched = cleanSize.toLowerCase().includes('unstitched') || (r.product_name || '').toLowerCase().includes('unstitched') || colorName.toLowerCase() === 'unstitched';
+
+                  if (isItemUnstitched) {
+                    return `🛍️ *Item ${i + 1}:* ${r.product_name}\n   • *Type:* Unstitched Suit (Free Size)\n   • *Quantity:* ${reqQty}\n   • *Price:* ₹${r.price * reqQty}`;
+                  } else {
+                    let colorLine = (colorName && colorName.toLowerCase() !== 'default') ? `\n   • *Variant/Color:* ${colorName}` : '';
+                    return `🛍️ *Item ${i + 1}:* ${r.product_name}${colorLine}\n   • *Size:* ${cleanSize}\n   • *Quantity:* ${reqQty}\n   • *Price:* ₹${r.price * reqQty}`;
+                  }
                 }).join('\n\n');
 
                 const clientName = (currentUser && currentUser.name) ? currentUser.name : 'Valued Client';

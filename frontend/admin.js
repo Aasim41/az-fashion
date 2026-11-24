@@ -1,4 +1,4 @@
-console.log("Admin Dashboard Loaded - Version 5");
+console.log("Admin Dashboard Loaded - Version 6");
 function getAuthHeaders() {
   const token = sessionStorage.getItem('az_admin_token');
   return token ? { 
@@ -322,6 +322,14 @@ function extractSizes(containerId) {
   return JSON.stringify(sizes);
 }
 
+function isCollectionUnstitched(selectId) {
+  const sel = document.getElementById(selectId);
+  if (!sel || !sel.value) return false;
+  if (String(sel.value) === '8') return true;
+  const col = (allCollections || []).find(c => String(c.id) === String(sel.value));
+  return !!(col && col.name && col.name.toLowerCase().includes('unstitched'));
+}
+
 function handleCollectionCategoryChange(selectId, containerId, noticeId, rowBtnId) {
   const sel = document.getElementById(selectId);
   const container = document.getElementById(containerId);
@@ -329,9 +337,9 @@ function handleCollectionCategoryChange(selectId, containerId, noticeId, rowBtnI
   const rowBtn = document.getElementById(rowBtnId);
   if (!sel || !container) return;
 
-  const col = allCollections.find(c => String(c.id) === String(sel.value));
-  const isUnstitched = col && col.name.toLowerCase().includes('unstitched');
+  const isUnstitched = isCollectionUnstitched(selectId);
 
+  // 1. Sizing Inventory
   if (isUnstitched) {
     if (notice) notice.style.display = 'block';
     if (rowBtn) rowBtn.style.display = 'none';
@@ -348,6 +356,52 @@ function handleCollectionCategoryChange(selectId, containerId, noticeId, rowBtnI
     if (container.children.length === 1 && container.querySelector('.size-name-input')?.value === 'Unstitched') {
       container.innerHTML = '';
       createSizeRow(containerId, 'M', 10);
+    }
+  }
+
+  // 2. Photos / Color Variant UI Adaptation
+  const isEdit = selectId === 'editCollection';
+  const labelElem = document.getElementById(isEdit ? 'editColorSectionLabel' : 'addColorSectionLabel');
+  const noticeElem = document.getElementById(isEdit ? 'editColorSectionNotice' : 'addColorSectionNotice');
+  const btnElem = document.getElementById(isEdit ? 'editColorVariantBtn' : 'addColorVariantBtn');
+  const variantContainerId = isEdit ? 'editColorVariantContainer' : 'addColorVariantContainer';
+  const variantContainer = document.getElementById(variantContainerId);
+
+  if (isUnstitched) {
+    if (labelElem) labelElem.innerHTML = isEdit ? '<i class="fas fa-camera"></i> Update Product Photos (Unstitched - No Color Selection)' : '<i class="fas fa-camera"></i> Product Photos (Unstitched - No Color Selection)';
+    if (noticeElem && !isEdit) noticeElem.style.display = 'block';
+    if (btnElem) btnElem.innerText = isEdit ? '+ Override / Add Photos' : '+ Add Photos';
+    
+    if (variantContainer) {
+      variantContainer.querySelectorAll('.color-variant-row').forEach(row => {
+        const nameGroup = row.querySelector('.var-name-group');
+        const nameInput = row.querySelector('.var-name');
+        const imgLabel = row.querySelector('.var-img-label');
+        if (nameGroup) nameGroup.style.display = 'none';
+        if (nameInput) {
+          nameInput.value = 'Default';
+          nameInput.required = false;
+        }
+        if (imgLabel) imgLabel.innerHTML = '<i class="fas fa-images"></i> Product Photos (Select one or multiple images)';
+      });
+    }
+  } else {
+    if (labelElem) labelElem.innerText = isEdit ? 'Update Color Variants & Images' : 'Color Variants & Images';
+    if (noticeElem && !isEdit) noticeElem.style.display = 'none';
+    if (btnElem) btnElem.innerText = isEdit ? '+ Override Color Variants' : '+ Add Color Variant';
+
+    if (variantContainer) {
+      variantContainer.querySelectorAll('.color-variant-row').forEach(row => {
+        const nameGroup = row.querySelector('.var-name-group');
+        const nameInput = row.querySelector('.var-name');
+        const imgLabel = row.querySelector('.var-img-label');
+        if (nameGroup) nameGroup.style.display = 'block';
+        if (nameInput) {
+          if (nameInput.value === 'Default') nameInput.value = '';
+          nameInput.required = true;
+        }
+        if (imgLabel) imgLabel.innerText = 'Images for this Color';
+      });
     }
   }
 }
@@ -468,18 +522,21 @@ document.getElementById('editImages')?.addEventListener('change', function() {
 
 function createColorVariantRow(containerId) {
   const container = document.getElementById(containerId);
+  const isEdit = containerId.startsWith('edit');
+  const isUnstitched = isCollectionUnstitched(isEdit ? 'editCollection' : 'addCollection');
+
   const row = document.createElement('div');
   row.className = 'color-variant-row';
   row.style.cssText = 'display: flex; flex-direction: column; gap: 10px; background: rgba(255,255,255,0.02); padding: 10px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.1); position: relative;';
   
   row.innerHTML = `
     <button type="button" onclick="this.parentElement.remove()" style="position: absolute; top: 10px; right: 10px; background: none; border: none; color: #ff5252; cursor: pointer; font-weight: bold;">X</button>
-    <div>
+    <div class="var-name-group" style="${isUnstitched ? 'display: none;' : ''}">
       <label style="color: var(--text-muted); display: block; margin-bottom: 5px; font-size: 0.9rem;">Color Name (e.g. Red)</label>
-      <input type="text" class="var-name" placeholder="Color Name" style="width: 100%; padding: 8px; border-radius: 5px; border: none; background: rgba(0,0,0,0.5); color: white;" required>
+      <input type="text" class="var-name" placeholder="Color Name" value="${isUnstitched ? 'Default' : ''}" style="width: 100%; padding: 8px; border-radius: 5px; border: none; background: rgba(0,0,0,0.5); color: white;" ${isUnstitched ? '' : 'required'}>
     </div>
     <div>
-      <label style="color: var(--text-muted); display: block; margin-bottom: 5px; font-size: 0.9rem;">Images for this Color</label>
+      <label class="var-img-label" style="color: var(--text-muted); display: block; margin-bottom: 5px; font-size: 0.9rem;">${isUnstitched ? '<i class="fas fa-images"></i> Product Photos (Select one or multiple images)' : 'Images for this Color'}</label>
       <input type="file" class="var-files" accept="image/*" multiple style="color: white; font-size: 0.85rem;" required>
     </div>
   `;
@@ -598,15 +655,16 @@ document.getElementById('addProductForm').addEventListener('submit', async (e) =
   const submitBtn = document.getElementById('addProdSubmitBtn') || e.target.querySelector('button[type="submit"]');
   const originalBtnText = submitBtn ? submitBtn.innerText : 'Upload Product';
   
+  const isUnstitched = isCollectionUnstitched('addCollection');
   const variants = document.querySelectorAll('#addColorVariantContainer .color-variant-row');
-  if (variants.length === 0) return alert("Please add at least one color variant and its images.");
+  if (variants.length === 0) return alert(isUnstitched ? "Please add product photos for this suit." : "Please add at least one color variant and its images.");
   
   // Collect all files
   let allFilesToUpload = [];
   let variantFileMap = [];
   
   variants.forEach(row => {
-    const name = row.querySelector('.var-name').value.trim() || 'Default';
+    const name = row.querySelector('.var-name')?.value?.trim() || 'Default';
     const files = Array.from(row.querySelector('.var-files').files);
     if (files.length > 0) {
       variantFileMap.push({ name, files });
@@ -614,7 +672,7 @@ document.getElementById('addProductForm').addEventListener('submit', async (e) =
     }
   });
 
-  if (allFilesToUpload.length === 0) return alert("Please select images for your variants.");
+  if (allFilesToUpload.length === 0) return alert(isUnstitched ? "Please select product photos." : "Please select images for your variants.");
 
   try {
     if (submitBtn) {
@@ -634,17 +692,19 @@ document.getElementById('addProductForm').addEventListener('submit', async (e) =
 
     if (submitBtn) submitBtn.innerText = 'Saving product...';
 
-    // Map color variants to the uploaded image indices
+    // Map color variants to the uploaded image indices (or empty array for unstitched)
     let colorsArr = [];
-    let currentIndex = 0;
-    variantFileMap.forEach(v => {
-      colorsArr.push({
-        name: v.name,
-        index: currentIndex,
-        count: v.files.length
+    if (!isUnstitched) {
+      let currentIndex = 0;
+      variantFileMap.forEach(v => {
+        colorsArr.push({
+          name: v.name,
+          index: currentIndex,
+          count: v.files.length
+        });
+        currentIndex += v.files.length;
       });
-      currentIndex += v.files.length;
-    });
+    }
 
     const payload = {
       name: document.getElementById('addName').value,
@@ -720,13 +780,14 @@ document.getElementById('editProductForm').addEventListener('submit', async (e) 
   const submitBtn = document.getElementById('editProdSubmitBtn') || e.target.querySelector('button[type="submit"]');
   const originalBtnText = submitBtn ? submitBtn.innerText : 'Save Changes';
   
+  const isUnstitched = isCollectionUnstitched('editCollection');
   const variants = document.querySelectorAll('#editColorVariantContainer .color-variant-row');
   let allFilesToUpload = [];
   let variantFileMap = [];
   
   if (variants.length > 0) {
     variants.forEach(row => {
-      const name = row.querySelector('.var-name').value.trim() || 'Default';
+      const name = row.querySelector('.var-name')?.value?.trim() || 'Default';
       const files = Array.from(row.querySelector('.var-files').files);
       if (files.length > 0) {
         variantFileMap.push({ name, files });
@@ -749,6 +810,10 @@ document.getElementById('editProductForm').addEventListener('submit', async (e) 
       sizes: extractSizes('editSizeContainer')
     };
 
+    if (isUnstitched) {
+      payload.colors = JSON.stringify([]);
+    }
+
     // If new images were provided, upload them directly to storage
     if (allFilesToUpload.length > 0) {
       let uploadedUrls = [];
@@ -760,18 +825,22 @@ document.getElementById('editProductForm').addEventListener('submit', async (e) 
         uploadedUrls.push(publicUrl);
       }
 
-      let colorsArr = [];
-      let currentIndex = 0;
-      variantFileMap.forEach(v => {
-        colorsArr.push({
-          name: v.name,
-          index: currentIndex,
-          count: v.files.length
+      if (!isUnstitched) {
+        let colorsArr = [];
+        let currentIndex = 0;
+        variantFileMap.forEach(v => {
+          colorsArr.push({
+            name: v.name,
+            index: currentIndex,
+            count: v.files.length
+          });
+          currentIndex += v.files.length;
         });
-        currentIndex += v.files.length;
-      });
+        payload.colors = JSON.stringify(colorsArr);
+      } else {
+        payload.colors = JSON.stringify([]);
+      }
 
-      payload.colors = JSON.stringify(colorsArr);
       payload.image_urls = JSON.stringify(uploadedUrls);
     }
 
